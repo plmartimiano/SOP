@@ -11,9 +11,12 @@ processo e EAP.
 Pacotes **1.1.2** (mapa de zonas da bancada), **1.2.1** (formato do
 dossiê), **1.2.3** (exportar/importar), **1.2.4** (interface por etapa),
 **1.3.1** (entrada de arquivo), **1.3.2** (triagem de qualidade), **1.3.3**
-(extração de frames), **1.3.4** (curva de movimento, geral **e** por zona)
-e **1.3.5** (detecção de ciclos — ver ressalva sobre a revisão visual
-arrastável) da EAP.
+(extração de frames), **1.3.4** (curva de movimento, geral **e** por zona),
+**1.3.5** (detecção de ciclos — ver ressalva sobre a revisão visual
+arrastável) e **1.3.6** (fatiamento em micro-ações) da EAP. Com isso, o
+bloco C do organograma (a parte "grátis" do pipeline, matemática de pixel
+sem custo de modelo) está completo — a fase 06 é a primeira que vai
+chamar um modelo pago.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -127,6 +130,29 @@ arrastável) da EAP.
   pontos, a matriz é zero na diagonal e simétrica, `encontrarAncoras` acha
   as repetições certas, e um teste de ponta a ponta confirma 4 ciclos de 2s
   cada com pontas marcadas suspeitas.
+- `js/micro-acoes.js` — fatiamento em micro-ações dentro de cada ciclo
+  (F05-01 a F05-05): mínimos locais da curva geral, dentro do intervalo do
+  ciclo, são as fronteiras candidatas (F05-01); vales a menos de 0,5s um do
+  outro são hesitação, não fronteira, e se juntam num só (F05-03); cada
+  fronteira é classificada cruzando com as curvas por zona — pico numa
+  zona de escaninho perto do instante = `componente_novo`, numa zona de
+  ferramenta = `troca_ferramenta`, as duas juntas = `combinada`, nenhuma =
+  `pausa_conferencia` (F05-02); o frame de maior movimento dentro de cada
+  fatia vira o frame-chave (F05-04), com os tempos do frame de antes e de
+  depois guardados como contexto (F05-05, sem duplicar a imagem — só a
+  referência de tempo, o frame de verdade já está na lista de frames).
+- `js/fase05-ui.js` — tela da fase 05: pede ciclos gravados na fase 04 e os
+  frames ainda na sessão; fatia cada ciclo, mostra o frame-chave em
+  miniatura e a causa de cada fatia, avisa quando a contagem foge da faixa
+  de 6–15 esperada (normal em vídeo curto de teste), e grava tudo em
+  `microAcoes`.
+- `tests/micro-acoes.test.mjs` — testes com uma curva sintética de três
+  vales nítidos: acha os vales certos, filtra os próximos demais, classifica
+  cada causa (`componente_novo`/`troca_ferramenta`/`combinada`/
+  `pausa_conferencia`) contra curvas de zona construídas à mão, escolhe o
+  frame-chave certo (o de maior movimento dentro da fatia) e o contexto de
+  antes/depois, e confere o caso degenerado de zero vales (uma fatia só,
+  cobrindo o ciclo inteiro).
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -256,6 +282,24 @@ repetitivo detectado" e a matriz de auto-similaridade sozinha, como
 diagnóstico, sem oferecer o botão de gravar. Nenhum erro de página em
 nenhum dos casos.
 
+O fatiamento em micro-ações (1.3.6) foi testado de ponta a ponta no mesmo
+Chromium: mapa de zonas (uma zona cobrindo o frame inteiro), ingestão,
+extração, detecção de ciclos e fatiamento do vídeo de 4 ciclos — os 3
+ciclos completos (a mesma detecção de 1.3.5) foram fatiados em 1 a 2
+fatias cada, com frame-chave e miniatura corretos, contagem de fatias
+batendo com a quantidade de miniaturas mostradas, e tudo gravado em
+`microAcoes` sem erro de página. A classificação por causa deu sempre
+`pausa_conferencia` nesse teste — e é o resultado *correto* pra esse
+vídeo: uma zona cobrindo o frame inteiro reproduz a mesma curva geral, e
+as fronteiras detectadas são justamente os vales dessa curva — não pode
+haver um "pico" de zona bem no ponto que é definido como vale. A
+classificação por causa específica (`componente_novo` vs
+`troca_ferramenta` vs `combinada`) está verificada com precisão nos
+testes automatizados, usando zonas esquerda/direita construídas à mão
+para dar sinal distinto — não fiz o trabalho extra de gerar um vídeo
+sintético com ação confinada a uma sub-região do frame só para essa
+combinação; os testes puros já provam a lógica.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - 1.3.5 (parte pendente) — revisão visual dos cortes com correção
@@ -270,7 +314,8 @@ nenhum dos casos.
   gasto estimado). Ainda abstrato: só faz sentido quando a extração demorar
   o suficiente (vídeo de vários minutos) para precisar de feedback de
   progresso — hoje o vídeo de teste extrai em menos de 1 segundo.
-- 1.3.6 — fatiamento em micro-ações (fase 05), o próximo passo natural: usa
-  os ciclos que o 1.3.5 acabou de cortar mais os vales da curva de
-  movimento pra achar as fronteiras entre uma ação e outra dentro de cada
-  ciclo.
+- 1.4.x — leitura semântica dos frames-chave (fase 06). É o primeiro
+  pacote que chama um modelo de visão de verdade (custo por chamada) — o
+  bloco "grátis" do pipeline (fases 00 a 05) está todo construído agora, e
+  é sobre as fatias que o 1.3.6 acabou de produzir que a leitura semântica
+  vai rodar.

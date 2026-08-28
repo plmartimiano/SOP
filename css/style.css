@@ -132,6 +132,16 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 .ciclos-tabela tr.ciclo-suspeito{background:#FFFDF4}
 .ciclos-tabela tr.ciclo-suspeito td:last-child{color:#8A6800}
 
+.ciclo-bloco{margin-top:14px;border:1px solid var(--line);background:#fff;padding:10px 12px}
+.ciclo-bloco h4{margin:0 0 8px;font-size:14px;font-weight:650}
+.fatia-aviso{font-weight:400;font-size:11.5px;color:var(--ink-soft)}
+.fatia-lista{display:flex;flex-direction:column;gap:6px}
+.fatia-item{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px dotted var(--line)}
+.fatia-item:last-child{border-bottom:none}
+.fatia-item img{image-rendering:pixelated;border:1px solid var(--line);flex:0 0 auto}
+.fatia-info{font-size:13px}
+.fatia-causa{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:.04em;color:var(--steel);text-transform:uppercase}
+
 .mapa-instrucao{font-size:13.5px;color:var(--ink-soft);margin:10px 0 8px}
 #mapaCanvas{border:1px solid var(--line);background:#fff;cursor:crosshair;max-width:100%;display:block}
 .mapa-form{margin-top:10px;border:1px solid var(--line);background:#FFFDF4;padding:10px 12px}

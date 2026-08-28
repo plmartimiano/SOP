@@ -10,6 +10,7 @@ import { montarMapaZonas } from "./fase00-ui.js";
 import { montarIngestao } from "./fase02-ui.js";
 import { montarExtracao } from "./fase03-ui.js";
 import { montarDeteccaoCiclos } from "./fase04-ui.js";
+import { montarFatiamento } from "./fase05-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -19,6 +20,7 @@ const TITULO_FERRAMENTA = {
   "02": "Processar vídeo",
   "03": "Extrair frames",
   "04": "Detectar ciclos",
+  "05": "Fatiar em micro-ações",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -127,7 +129,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -184,6 +186,23 @@ function renderPainel() {
         adicionarVersao(dossie, "ciclos", dadosCiclos, { origem: "F04-01/F04-02/F04-03/F04-04/F04-05" });
         renderTudo();
         mostrarStatus(`Ciclos gravados no dossiê (${dadosCiclos.total} ciclo${dadosCiclos.total === 1 ? "" : "s"}).`, "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "05") {
+    const mapaDeZonasAtual = dossie ? obterVersaoAtual(dossie, "mapaDeZonas") : null;
+    const ciclosAtual = dossie ? obterVersaoAtual(dossie, "ciclos") : null;
+    montarFatiamento(document.getElementById("faseFerramenta"), {
+      ciclosRodouNoDossie: ciclosAtual !== null,
+      frames: obterFramesExtraidos(),
+      ciclos: ciclosAtual ? ciclosAtual.dados.lista : [],
+      zonas: mapaDeZonasAtual ? mapaDeZonasAtual.dados.zonas : [],
+      onGravar: (dadosMicroAcoes) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "microAcoes", dadosMicroAcoes, { origem: "F05-01/F05-02/F05-03/F05-04/F05-05" });
+        renderTudo();
+        mostrarStatus("Micro-ações gravadas no dossiê (seção \"microAcoes\").", "ok");
       },
     });
   }
