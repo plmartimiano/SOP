@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dossiê SOP — formato e exportar/importar</title>
+<title>Dossiê SOP — uma tela por fase</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <header class="hero">
   <div class="wrap">
-    <div class="eyebrow">EAP 1.2.1 + 1.2.3 · demonstração</div>
+    <div class="eyebrow">EAP 1.2.1 + 1.2.3 + 1.2.4 · casca do aplicativo</div>
     <h1>Dossiê do SOP</h1>
-    <p>O arquivo único que atravessa todas as fases do pipeline. Esta tela existe só para exercitar o formato e o exportar/importar — a interface por etapa (1.2.4) vem depois.</p>
+    <p>Uma tela por fase, navegação lateral, indicador de qual fase já rodou. Sem lógica de análise ainda — cada fase de verdade (ingestão, extração de frames, etc.) é um pacote futuro; aqui só a casca, exercitada com o dossiê de exemplo.</p>
   </div>
   <div class="beltstrip"></div>
 </header>
@@ -21,29 +22,13 @@
 
   <section class="panel">
     <div class="panelhead">
-      <span class="code mono">1.2.1</span>
+      <span class="code mono">1.2.1 + 1.2.3</span>
       <h2>Dossiê atual</h2>
     </div>
     <div class="panelbody">
       <div class="row">
         <button class="act" id="btnNovo">Novo dossiê vazio</button>
         <button class="act secondary" id="btnExemplo">Carregar exemplo fictício</button>
-      </div>
-      <div class="resumo" id="resumo" aria-live="polite"></div>
-      <details class="jsonview" id="jsonview" hidden>
-        <summary>Ver JSON completo</summary>
-        <pre class="jsontext mono" id="jsontext"></pre>
-      </details>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="panelhead">
-      <span class="code mono">1.2.3</span>
-      <h2>Exportar e importar</h2>
-    </div>
-    <div class="panelbody">
-      <div class="row">
         <button class="act" id="btnExportar" disabled>Baixar dossiê (.json)</button>
         <label class="act secondary" style="cursor:pointer">
           Carregar dossiê
@@ -51,14 +36,23 @@
         </label>
       </div>
       <div class="status" id="status" role="status"></div>
+      <details class="jsonview" id="jsonview" hidden>
+        <summary>Ver dossiê completo (JSON)</summary>
+        <pre class="jsontext mono" id="jsontext"></pre>
+      </details>
     </div>
   </section>
+
+  <div class="shell">
+    <nav class="sidebar" id="sidebar" aria-label="Fases do pipeline"></nav>
+    <main class="main" id="painelFase"></main>
+  </div>
 
 </div>
 
 <footer>
   <div class="wrap">
-    <p>Teste o ciclo completo do cartão F01-03: baixe o dossiê, feche esta aba, reabra a página e carregue o arquivo — o conteúdo volta exatamente como estava.</p>
+    <p>Teste o ciclo do cartão F01-03: baixe o dossiê, feche esta aba, reabra a página e carregue o arquivo — o conteúdo, e a fase em que você estava, voltam como estavam. Teste o cartão F01-04 navegando pelas 17 fases sem nenhum dossiê carregado — nada deve quebrar.</p>
   </div>
 </footer>
 

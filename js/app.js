@@ -1,30 +1,29 @@
-// Liga o módulo de dossiê (1.2.1) e o de exportar/importar (1.2.3) aos
-// controles de index.html. Não é a "interface por etapa" do pacote 1.2.4 —
-// é só a casca mínima para exercitar os dois pacotes em uso real no navegador.
+// Liga os módulos de dossiê (1.2.1), exportar/importar (1.2.3) e a lista de
+// fases (1.2.4) aos controles de index.html. A navegação usa o hash da URL
+// (#fase-08) para que voltar/avançar no navegador e recarregar a página
+// mantenham a fase selecionada — sem framework, sem build.
 
-import { SECOES, criarDossieVazio, obterVersaoAtual } from "./dossie.js";
+import { criarDossieVazio, obterVersaoAtual, obterHistorico, SECOES } from "./dossie.js";
 import { exportarDossie, importarDossieDeArquivo, ErroImportacao } from "./dossie-io.js";
-
-const ROTULOS_SECAO = {
-  origemVideo: "Origem do vídeo",
-  mapaDeZonas: "Mapa de zonas",
-  frames: "Frames",
-  ciclos: "Ciclos",
-  microAcoes: "Micro-ações",
-  reconhecimento: "Reconhecimento",
-  passos: "Passos",
-  prompts: "Prompts",
-  imagens: "Imagens",
-  aprovacoes: "Aprovações",
-};
+import { FASES } from "./fases.js";
 
 let dossie = null;
 
-const resumoEl = document.getElementById("resumo");
+const sidebarEl = document.getElementById("sidebar");
+const painelEl = document.getElementById("painelFase");
 const jsonviewEl = document.getElementById("jsonview");
 const jsontextEl = document.getElementById("jsontext");
 const statusEl = document.getElementById("status");
 const btnExportar = document.getElementById("btnExportar");
+
+function faseAtualNumero() {
+  const m = location.hash.match(/^#fase-(\d+)$/);
+  return m ? m[1] : FASES[0].numero;
+}
+
+function irParaFase(numero) {
+  location.hash = `#fase-${numero}`;
+}
 
 function mostrarStatus(mensagem, tipo, detalhes = []) {
   statusEl.className = `status show ${tipo}`;
@@ -37,39 +36,121 @@ function limparStatus() {
   statusEl.innerHTML = "";
 }
 
-function renderizar() {
+// Uma fase "rodou" quando a seção do dossiê que ela alimenta tem pelo menos
+// uma versão. Fases sem seção própria (01, 15, 16) usam uma regra própria.
+function faseRodou(fase) {
+  if (fase.ehContainer) return dossie !== null;
+  if (!fase.secaoDossie) return false;
+  if (!dossie) return false;
+  return obterVersaoAtual(dossie, fase.secaoDossie) !== null;
+}
+
+function renderSidebar() {
+  const numeroAtual = faseAtualNumero();
+  sidebarEl.innerHTML = FASES.map((fase) => {
+    const ativa = fase.numero === numeroAtual;
+    const rodou = faseRodou(fase);
+    return `<button class="sidebar-item ${fase.tipo}${ativa ? " active" : ""}" data-numero="${fase.numero}">
+      <span class="chip mono">${fase.numero}</span>
+      <span class="titulo">${fase.titulo}</span>
+      <span class="dot${rodou ? " rodou" : ""}" title="${rodou ? "já rodou" : "ainda não rodou"}"></span>
+    </button>`;
+  }).join("");
+
+  sidebarEl.querySelectorAll(".sidebar-item").forEach((btn) => {
+    btn.addEventListener("click", () => irParaFase(btn.dataset.numero));
+  });
+}
+
+function renderEstadoDaFase(fase) {
+  if (fase.ehContainer) {
+    if (!dossie) {
+      return `<div class="vaziomsg">Nenhum dossiê carregado — crie um novo ou carregue o exemplo acima.</div>`;
+    }
+    const linhas = SECOES.map((nome) => {
+      const historico = obterHistorico(dossie, nome);
+      return `<div>${historico.length ? `v${historico.length}` : "—"} · ${nome}</div>`;
+    }).join("");
+    return `<div class="rodou">Dossiê "${dossie.estacao.nome || "(sem nome)"}" — ${SECOES.filter((s) => obterHistorico(dossie, s).length).length} de ${SECOES.length} seções com dado.</div>
+      <div style="font-size:13px">${linhas}</div>`;
+  }
+
+  if (!fase.secaoDossie) {
+    return `<div class="vaziomsg">Esta fase não grava uma seção própria no dossiê (ver nota acima) — o pacote que a implementa ainda não existe.</div>`;
+  }
+
   if (!dossie) {
-    resumoEl.innerHTML = "";
+    return `<div class="vaziomsg">Nenhum dossiê carregado — crie um novo ou carregue o exemplo acima.</div>`;
+  }
+
+  const atual = obterVersaoAtual(dossie, fase.secaoDossie);
+  if (!atual) {
+    return `<div class="vaziomsg">Esta fase ainda não rodou (seção "${fase.secaoDossie}" sem versões).</div>`;
+  }
+
+  const historico = obterHistorico(dossie, fase.secaoDossie);
+  return `<div class="rodou">v${atual.versao} de ${historico.length} · gravado em ${new Date(atual.data).toLocaleString("pt-BR")}${atual.origem ? ` · ${atual.origem}` : ""}</div>
+    <pre class="jsontext mono">${JSON.stringify(atual.dados, null, 2)}</pre>`;
+}
+
+function renderPainel() {
+  const numero = faseAtualNumero();
+  const fase = FASES.find((f) => f.numero === numero) || FASES[0];
+
+  painelEl.innerHTML = `
+    <article class="fasecard ${fase.tipo}">
+      <div class="fasehead">
+        <div class="top">
+          <span class="num mono">${fase.numero}</span>
+          <h2>${fase.titulo}</h2>
+          <span class="tag">${fase.tipo === "humano" ? "decisão humana" : fase.tipo === "pago" ? "chamada paga" : "automático"}</span>
+        </div>
+        <div class="sub">${fase.subtitulo}</div>
+      </div>
+      <div class="fasebody">
+        <div class="io">
+          <div><b>ENTRA</b><span>${fase.entra}</span></div>
+          <div><b>SAI</b><span>${fase.sai}</span></div>
+          ${fase.decide ? `<div><b>DECIDE</b><span>${fase.decide}</span></div>` : ""}
+        </div>
+        <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
+        ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
+        <div class="estado">
+          <h3>Estado no dossiê</h3>
+          ${renderEstadoDaFase(fase)}
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderDossieToolbar() {
+  if (!dossie) {
     jsonviewEl.hidden = true;
     btnExportar.disabled = true;
     return;
   }
-
-  resumoEl.innerHTML = SECOES.map((nome) => {
-    const atual = obterVersaoAtual(dossie, nome);
-    const vazia = atual === null;
-    return `<div class="stat${vazia ? " vazia" : ""}">
-      <div class="n">${vazia ? "—" : `v${atual.versao}`}</div>
-      <div class="label">${ROTULOS_SECAO[nome]}</div>
-    </div>`;
-  }).join("");
-
   jsonviewEl.hidden = false;
   jsontextEl.textContent = JSON.stringify(dossie, null, 2);
   btnExportar.disabled = false;
 }
 
+function renderTudo() {
+  renderDossieToolbar();
+  renderSidebar();
+  renderPainel();
+}
+
 document.getElementById("btnNovo").addEventListener("click", () => {
   dossie = criarDossieVazio({ nome: "Estação nova" });
   limparStatus();
-  renderizar();
+  renderTudo();
 });
 
 document.getElementById("btnExemplo").addEventListener("click", async () => {
   const resp = await fetch("fixtures/dossie-exemplo.json");
   dossie = await resp.json();
   limparStatus();
-  renderizar();
+  renderTudo();
 });
 
 document.getElementById("btnExportar").addEventListener("click", () => {
@@ -85,7 +166,7 @@ document.getElementById("inputImportar").addEventListener("change", async (ev) =
   try {
     const { dossie: carregado, avisos } = await importarDossieDeArquivo(file);
     dossie = carregado;
-    renderizar();
+    renderTudo();
     if (avisos.length) {
       mostrarStatus("Dossiê carregado, com avisos:", "erro", avisos);
     } else {
@@ -100,4 +181,12 @@ document.getElementById("inputImportar").addEventListener("change", async (ev) =
   }
 });
 
-renderizar();
+window.addEventListener("hashchange", () => {
+  renderSidebar();
+  renderPainel();
+});
+
+if (!location.hash) {
+  location.hash = `#fase-${FASES[0].numero}`;
+}
+renderTudo();

@@ -19,7 +19,7 @@ body{
   line-height:1.55;
 }
 .mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
-.wrap{max-width:900px;margin:0 auto;padding:0 18px 96px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 18px 96px}
 
 header.hero{border-bottom:3px solid var(--ink);background:var(--ink);color:var(--paper);padding:30px 0 0}
 header.hero .wrap{padding-bottom:0}
@@ -60,5 +60,63 @@ input[type=file]{font-size:13px}
 details.jsonview{margin-top:16px;border:1px solid var(--line);background:#fff}
 details.jsonview summary{cursor:pointer;padding:10px 12px;font-family:ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
 pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12.5px;overflow-x:auto;max-height:420px}
+
+/* ---------- shell: navegação lateral por fase (1.2.4) ---------- */
+.shell{display:flex;gap:18px;align-items:flex-start;margin-top:22px}
+.sidebar{flex:0 0 252px;border:1px solid var(--line);background:var(--card);max-height:calc(100vh - 200px);overflow-y:auto;position:sticky;top:14px}
+.sidebar-item{
+  display:flex;gap:8px;align-items:center;width:100%;text-align:left;
+  padding:9px 10px;border:none;border-bottom:1px solid var(--line);background:none;
+  cursor:pointer;font:inherit;font-size:13px;color:inherit;
+}
+.sidebar-item:last-child{border-bottom:none}
+.sidebar-item:hover{background:#fff}
+.sidebar-item:focus-visible{outline:3px solid var(--hazard);outline-offset:-3px}
+.sidebar-item.active{background:var(--ink);color:var(--paper)}
+.sidebar-item .chip{
+  font-family:ui-monospace,Menlo,monospace;font-size:10px;font-weight:700;
+  padding:2px 5px;background:var(--steel);color:#fff;flex:0 0 auto;line-height:1.4;
+}
+.sidebar-item.humano .chip{background:var(--hazard);color:var(--ink)}
+.sidebar-item.pago .chip{background:#8A4B7D;color:#fff}
+.sidebar-item .titulo{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-item .dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:0 0 auto}
+.sidebar-item.active .dot{background:var(--paper)}
+.sidebar-item .dot.rodou{background:var(--ok)}
+.sidebar-item.active .dot.rodou{background:#8FE0B8}
+
+.main{flex:1 1 auto;min-width:0}
+.fasecard{border:1px solid var(--line);background:var(--card)}
+.fasecard .fasehead{padding:16px;border-bottom:1px solid var(--line)}
+.fasecard .fasehead .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.fasecard .num{font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;background:var(--ink);color:#fff;padding:3px 7px}
+.fasecard.humano .num{background:var(--hazard);color:var(--ink)}
+.fasecard.pago .num{background:#8A4B7D;color:#fff}
+.fasecard .fasehead h2{margin:0;font-size:19px;font-weight:750;letter-spacing:-.01em}
+.fasecard .fasehead .sub{font-size:14px;color:var(--ink-soft);margin-top:4px}
+.fasecard .tag{
+  margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-soft);border:1px solid var(--line);padding:3px 7px;white-space:nowrap;
+}
+
+.fasebody{padding:16px}
+.io{display:grid;grid-template-columns:1fr;gap:6px;font-size:14.5px}
+.io div{display:flex;gap:8px}
+.io b{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:.08em;color:var(--ink-soft);flex:0 0 52px;padding-top:2px}
+.gatebar{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);font-size:14px}
+.gatebar span{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);background:var(--hazard);padding:2px 5px;margin-right:7px}
+
+.notasecao{margin-top:12px;font-size:13px;color:var(--ink-soft);border-left:3px solid var(--line);padding-left:10px}
+
+.estado{margin-top:16px;border-top:2px solid var(--ink);padding-top:14px}
+.estado h3{margin:0 0 10px;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--steel)}
+.estado .vaziomsg{font-size:14px;color:var(--ink-soft)}
+.estado .rodou{font-size:13px;color:var(--ok);font-family:ui-monospace,Menlo,monospace;margin-bottom:8px}
+.estado pre.jsontext{border:1px solid var(--line);max-height:320px}
+
+@media (max-width:760px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;max-height:280px;flex:1 1 auto;width:100%}
+}
 
 footer{border-top:3px solid var(--ink);margin-top:40px;padding-top:18px;font-size:13.5px;color:var(--ink-soft)}

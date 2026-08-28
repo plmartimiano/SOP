@@ -8,7 +8,8 @@ processo e EAP.
 
 ## O que já existe
 
-Pacotes **1.2.1** (formato do dossiê) e **1.2.3** (exportar/importar) da EAP.
+Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar) e
+**1.2.4** (interface por etapa) da EAP.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -23,12 +24,20 @@ Pacotes **1.2.1** (formato do dossiê) e **1.2.3** (exportar/importar) da EAP.
 - `fixtures/dossie-exemplo.json` — exemplo fictício preenchido cobrindo as
   dez seções, incluindo uma seção (`passos`) com duas versões para mostrar
   que reprocessar não apaga a versão anterior.
-- `index.html` / `js/app.js` / `css/style.css` — página mínima para
-  exercitar os dois pacotes: criar dossiê vazio, carregar o exemplo, baixar,
-  carregar de volta. **Não** é a interface por etapa (pacote 1.2.4, ainda não
-  construído).
+- `js/fases.js` — metadados estáticos das 17 fases do organograma de
+  processo (título, entra/sai/decide, critério de passagem, e a qual seção
+  do dossiê cada uma corresponde). Só texto — nenhuma lógica de análise.
+- `index.html` / `js/app.js` / `css/style.css` — a casca do aplicativo:
+  toolbar do dossiê (novo / exemplo / exportar / importar) + navegação
+  lateral pelas 17 fases + indicador de qual fase já tem dado gravado.
+  Navegação por hash da URL (`#fase-08`), então recarregar a página mantém a
+  fase selecionada. Nenhuma fase de análise está implementada de verdade
+  ainda — cada tela mostra o que entra, o que sai, o critério de passagem, e
+  os dados da seção correspondente do dossiê quando existem.
 - `tests/dossie.test.mjs` — testes do formato e do round-trip
   exportar → importar.
+- `tests/fases.test.mjs` — testes de integridade dos metadados das 17 fases
+  (numeração, campos obrigatórios, seções do dossiê referenciadas existem).
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -66,11 +75,16 @@ python3 -m http.server 8000
 Para rodar os testes (Node 18+):
 
 ```
-node --test tests/
+node --test
 ```
 
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - 1.2.2 — regra de imutabilidade (quando cada fase deve gravar versão nova).
-- 1.2.4 — interface por etapa (uma tela por fase, navegação lateral).
-- 1.2.5 — painel de registro e custo.
+  Adiado porque ainda não existe nenhuma fase de análise real reprocessando
+  dado — a regra hoje não teria o que aplicar de verdade.
+- 1.2.5 — painel de registro e custo (frames processados, chamadas feitas,
+  gasto estimado).
+- 1.3.x em diante — pipeline de análise de verdade (upload de MP4, triagem
+  de qualidade, extração de frames...), que é o que vai preencher as telas
+  que hoje só mostram "esta fase ainda não rodou".
