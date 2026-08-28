@@ -159,9 +159,11 @@ function renderPainel() {
   }
 
   if (fase.numero === "03") {
+    const mapaDeZonasAtual = dossie ? obterVersaoAtual(dossie, "mapaDeZonas") : null;
     montarExtracao(document.getElementById("faseFerramenta"), {
       videoAprovadoNoDossie: dossie ? obterVersaoAtual(dossie, "origemVideo") !== null : false,
       video: obterVideoAprovado(),
+      zonas: mapaDeZonasAtual ? mapaDeZonasAtual.dados.zonas : [],
       onGravar: (dadosFrames) => {
         if (!dossie) return;
         adicionarVersao(dossie, "frames", dadosFrames, { origem: "F03-01/F03-02" });

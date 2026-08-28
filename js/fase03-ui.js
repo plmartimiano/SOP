@@ -5,14 +5,15 @@
 // 02 em vez de fingir que tem o vídeo.
 
 import { extrairFrames } from "./frames-extrator.js";
-import { montarCurva } from "./curva-movimento.js";
+import { montarCurva, montarCurvaPorZona } from "./curva-movimento.js";
 import { definirFramesExtraidos } from "./sessao-midia.js";
 
 // container: elemento onde a ferramenta é desenhada.
 // videoAprovadoNoDossie: bool — a fase 02 já gravou origemVideo?
 // video: { file, dados } | null — vindo de obterVideoAprovado().
+// zonas: zonas do mapa da bancada (dossie.secoes.mapaDeZonas), [] se a fase 00 não rodou.
 // onGravar: (dadosFrames) => void — grava a versão em "frames" e re-renderiza.
-export function montarExtracao(container, { videoAprovadoNoDossie, video, onGravar }) {
+export function montarExtracao(container, { videoAprovadoNoDossie, video, zonas = [], onGravar }) {
   if (!videoAprovadoNoDossie) {
     container.innerHTML = `<div class="vaziomsg">Grave um vídeo aprovado na fase 02 antes de extrair frames.</div>`;
     return;
@@ -59,7 +60,8 @@ export function montarExtracao(container, { videoAprovadoNoDossie, video, onGrav
 
       definirFramesExtraidos(frames);
       const curva = montarCurva(frames);
-      renderResultado(frames, curva);
+      const curvaPorZona = zonas.length ? montarCurvaPorZona(frames, zonas) : null;
+      renderResultado(frames, curva, curvaPorZona);
     } catch (e) {
       resultadoEl.innerHTML = `<div class="status show erro">${e.message || "Erro inesperado ao extrair frames."}</div>`;
     } finally {
@@ -69,24 +71,41 @@ export function montarExtracao(container, { videoAprovadoNoDossie, video, onGrav
     }
   });
 
-  function renderResultado(frames, curva) {
+  function renderResultado(frames, curva, curvaPorZona) {
     const tiras = frames
       .map((f) => `<img src="${f.miniaturaDataUrl}" width="64" height="64" title="${f.tempoSegundos}s" alt="frame em ${f.tempoSegundos}s">`)
+      .join("");
+
+    const legendaZona = zonas.length
+      ? `<p class="grafico-legenda">${zonas.length} zona${zonas.length === 1 ? "" : "s"} do mapa da bancada, cada uma com sua própria curva abaixo.</p>`
+      : `<p class="grafico-legenda">Sem curva por zona — nenhuma zona foi mapeada na fase 00 ainda.</p>`;
+
+    const graficosZona = zonas
+      .map(
+        (z) => `<div class="grafico-zona">
+          <span class="mono grafico-zona-nome">${z.id} · ${z.nomeOficial}</span>
+          <canvas id="curvaZona-${z.id}" width="640" height="70"></canvas>
+        </div>`
+      )
       .join("");
 
     resultadoEl.innerHTML = `
       <div class="status show ok">${frames.length} frames extraídos a 2 quadros/segundo (miniaturas 64×64, tons de cinza).</div>
       <div class="filmstrip">${tiras}</div>
       <div class="grafico-bloco">
-        <h4>Curva de movimento — crua (cinza) e suavizada (azul)</h4>
+        <h4>Curva de movimento geral — crua (cinza) e suavizada (azul)</h4>
         <canvas id="curvaCanvas" width="640" height="140"></canvas>
-        <p class="grafico-legenda">Curva por zona da bancada ainda não existe — o mapa de zonas (pacote 1.1.2) já existe, mas ninguém ainda cruza a geometria das zonas com esses frames.</p>
+        ${legendaZona}
+        ${graficosZona}
       </div>
       <div class="row" style="margin-top:12px">
         <button class="act" id="extracaoGravar">Gravar no dossiê</button>
       </div>`;
 
     desenharGrafico(resultadoEl.querySelector("#curvaCanvas"), curva);
+    zonas.forEach((z) => {
+      desenharGrafico(resultadoEl.querySelector(`#curvaZona-${z.id}`), curvaPorZona[z.id]);
+    });
 
     resultadoEl.querySelector("#extracaoGravar").addEventListener("click", () => {
       onGravar({
@@ -94,6 +113,7 @@ export function montarExtracao(container, { videoAprovadoNoDossie, video, onGrav
         total: frames.length,
         tempos: frames.map((f) => f.tempoSegundos),
         curvaMovimento: curva,
+        ...(curvaPorZona ? { curvaPorZona } : {}),
       });
     });
   }

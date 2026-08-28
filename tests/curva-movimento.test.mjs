@@ -5,7 +5,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { calcularCurvaMovimento, suavizarCurva, montarCurva } from "../js/curva-movimento.js";
+import {
+  calcularCurvaMovimento,
+  suavizarCurva,
+  montarCurva,
+  indicesDaZona,
+  calcularCurvaPorZona,
+  montarCurvaPorZona,
+} from "../js/curva-movimento.js";
 
 function frame(tempoSegundos, valores) {
   return { tempoSegundos, cinzas: Float64Array.from(valores) };
@@ -63,5 +70,48 @@ test("montarCurva combina crua e suavizada com o mesmo tempo", () => {
     assert.ok("valorCru" in p);
     assert.ok("valorSuavizado" in p);
     assert.ok(typeof p.tempoSegundos === "number");
+  }
+});
+
+// A partir daqui: curva por zona (F03-04), grade pequena (4×4=16 células)
+// pra dar pra conferir os índices na mão.
+
+test("indicesDaZona pega as células cujo centro cai dentro do retângulo", () => {
+  const zonaSuperiorEsquerda = { retangulo: { x: 0, y: 0, largura: 0.5, altura: 0.5 } };
+  const indices = indicesDaZona(zonaSuperiorEsquerda, 4).sort((a, b) => a - b);
+  assert.deepEqual(indices, [0, 1, 4, 5]); // linhas 0–1, colunas 0–1 da grade 4×4
+});
+
+test("indicesDaZona não pega nada de uma zona fora da grade (x >= 1)", () => {
+  const zonaForaDoFrame = { retangulo: { x: 1, y: 0, largura: 0.2, altura: 0.2 } };
+  assert.deepEqual(indicesDaZona(zonaForaDoFrame, 4), []);
+});
+
+test("calcularCurvaPorZona isola o movimento por região — mudança numa zona não vaza pra outra", () => {
+  const lado = 4;
+  const parado = new Array(lado * lado).fill(0);
+  // muda só as células do canto superior-esquerdo (índices 0,1,4,5)
+  const mudouNoCanto = parado.map((v, i) => ([0, 1, 4, 5].includes(i) ? 100 : 0));
+  const frames = [frame(0, parado), frame(0.5, mudouNoCanto)];
+
+  const zonaSuperior = { id: "ZA", retangulo: { x: 0, y: 0, largura: 0.5, altura: 0.5 } };
+  const zonaInferior = { id: "ZB", retangulo: { x: 0.5, y: 0.5, largura: 0.5, altura: 0.5 } };
+  const curvas = calcularCurvaPorZona(frames, [zonaSuperior, zonaInferior], lado);
+
+  assert.equal(curvas.ZA[0].valor, 100);
+  assert.equal(curvas.ZB[0].valor, 0);
+});
+
+test("montarCurvaPorZona devolve crua+suavizada por zona, indexado pelo id", () => {
+  const lado = 4;
+  const frames = [frame(0, new Array(16).fill(0)), frame(0.5, new Array(16).fill(50)), frame(1, new Array(16).fill(50))];
+  const zona = { id: "Z01", retangulo: { x: 0, y: 0, largura: 1, altura: 1 } };
+
+  const resultado = montarCurvaPorZona(frames, [zona], 3, lado);
+  assert.ok("Z01" in resultado);
+  assert.equal(resultado.Z01.length, 2);
+  for (const p of resultado.Z01) {
+    assert.ok("valorCru" in p);
+    assert.ok("valorSuavizado" in p);
   }
 });

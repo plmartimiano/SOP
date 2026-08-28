@@ -11,8 +11,8 @@ processo e EAP.
 Pacotes **1.1.2** (mapa de zonas da bancada), **1.2.1** (formato do
 dossiê), **1.2.3** (exportar/importar), **1.2.4** (interface por etapa),
 **1.3.1** (entrada de arquivo), **1.3.2** (triagem de qualidade), **1.3.3**
-(extração de frames) e **1.3.4** (curva de movimento geral — ver ressalva
-sobre a curva por zona) da EAP.
+(extração de frames) e **1.3.4** (curva de movimento, geral **e** por
+zona) da EAP.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -70,21 +70,21 @@ sobre a curva por zona) da EAP.
 - `js/frames-extrator.js` — a extração de verdade (F03-01 + F03-02): amostra
   o vídeo a 2 quadros/segundo por busca de tempo (`seek`) e gera de cada um
   uma miniatura 64×64 em tons de cinza.
-- `js/curva-movimento.js` — a curva de movimento geral (F03-03 + F03-05):
-  diferença média de pixel entre cada par de frames vizinhos (picos = ação,
-  vales = pausa) e uma suavização por média móvel curta que limpa ruído
-  pontual sem apagar um vale sustentado. **A curva por zona (F03-04) não
-  está implementada** — precisa da geometria do mapa de zonas (cartão
-  F00-03, pacote EAP 1.1.2), que ainda não existe; inventar zonas aqui seria
-  fabricar dado que o vídeo não deu. Isso fica dito na própria tela da fase
-  03, não escondido.
+- `js/curva-movimento.js` — a curva de movimento, geral e por zona (F03-03 +
+  F03-04 + F03-05): diferença média de pixel entre cada par de frames
+  vizinhos (picos = ação, vales = pausa), tanto no frame inteiro quanto só
+  nos pixels de cada zona do mapa da bancada (`indicesDaZona` traduz o
+  retângulo normalizado da zona pra posições na grade 64×64 das miniaturas),
+  e uma suavização por média móvel curta que limpa ruído pontual sem apagar
+  um vale sustentado.
 - `js/fase03-ui.js` — tela da fase 03: se a fase 02 não gravou vídeo
   aprovado, ou se o vídeo não está mais na sessão (página recarregada, outro
   dossiê carregado), explica isso em vez de fingir que tem o vídeo. Com
-  vídeo disponível, extrai, calcula e desenha a curva de movimento (crua e
-  suavizada, num `<canvas>`), mostra a fita de miniaturas, e grava
-  `taxaAmostragemFps` + `total` + `tempos` + `curvaMovimento` na seção
-  `frames`.
+  vídeo disponível, extrai, calcula e desenha a curva de movimento geral
+  (crua e suavizada, num `<canvas>`) e — se a fase 00 já mapeou zonas — uma
+  curva menor por zona, mostra a fita de miniaturas, e grava
+  `taxaAmostragemFps` + `total` + `tempos` + `curvaMovimento` +
+  `curvaPorZona` (quando houver zonas) na seção `frames`.
 - `tests/dossie.test.mjs` — testes do formato e do round-trip
   exportar → importar.
 - `tests/fases.test.mjs` — testes de integridade dos metadados das 17 fases
@@ -96,7 +96,9 @@ sobre a curva por zona) da EAP.
 - `tests/curva-movimento.test.mjs` — testes da diferença de pixel e da
   suavização com frames sintéticos (arrays pequenos, não vídeo de verdade):
   frames idênticos dão zero, preto→branco dá o máximo, um pico isolado é
-  atenuado pela suavização mas um vale sustentado sobrevive.
+  atenuado pela suavização mas um vale sustentado sobrevive, e — numa grade
+  4×4 pequena o bastante pra conferir os índices na mão — uma mudança numa
+  região não vaza pra curva de outra zona.
 - `tests/mapa-zonas.test.mjs` — testes de geometria e validação de zona
   (nome vazio, tipo fora da lista, retângulo sem área, renumeração após
   remover). O desenho em canvas em si só se testa no navegador.
@@ -202,13 +204,18 @@ duplicado: trocar de foto sem sair da fase registrava um segundo
 referência do handler ativo num escopo que sobrevive entre montagens da
 tela, removendo o antigo antes de registrar o novo.
 
+Com o mapa de zonas pronto, fechei a curva por zona (1.3.4 completo) e
+testei encadeando os três: mapear duas zonas lado a lado (esquerda/direita)
+numa foto 16:9, ingerir um vídeo onde só a metade esquerda muda de cor a
+cada 0,5s, e extrair. O payload gravado mostrou a zona esquerda com média
+suavizada ~140 (numa escala 0–255) e a zona direita com ~0,3 — a curva
+isola geometricamente o movimento de verdade, sem vazar de uma zona pra
+outra, exatamente o que o cartão F03-04 promete ("pra qual escaninho a mão
+foi"). Sem zona mapeada, a tela volta a mostrar só a curva geral, sem
+tentar desenhar gráficos vazios.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
-- 1.3.4 (parte pendente) — curva de movimento **por zona** (F03-04): o
-  mapa de zonas (1.1.2) que faltava para isso já existe agora; falta
-  cruzar a geometria das zonas com os pixels de cada frame extraído na
-  fase 03. `curva-movimento.js` já está preparado para receber esse
-  parâmetro (ver `CURVA_POR_ZONA_PENDENTE`).
 - 1.2.2 — regra de imutabilidade (quando cada fase deve gravar versão nova).
   Adiado porque ainda não existe nenhuma fase de análise real reprocessando
   dado — a regra hoje não teria o que aplicar de verdade.
