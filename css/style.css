@@ -108,6 +108,10 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 
 .notasecao{margin-top:12px;font-size:13px;color:var(--ink-soft);border-left:3px solid var(--line);padding-left:10px}
 
+.ferramenta{margin-top:16px;border-top:2px solid var(--ink);padding-top:14px}
+.ferramenta h3{margin:0 0 10px;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--steel)}
+.ingestao-carregando{font-size:13.5px;color:var(--ink-soft);margin-top:10px}
+
 .estado{margin-top:16px;border-top:2px solid var(--ink);padding-top:14px}
 .estado h3{margin:0 0 10px;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--steel)}
 .estado .vaziomsg{font-size:14px;color:var(--ink-soft)}

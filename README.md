@@ -8,8 +8,9 @@ processo e EAP.
 
 ## O que já existe
 
-Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar) e
-**1.2.4** (interface por etapa) da EAP.
+Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
+**1.2.4** (interface por etapa), **1.3.1** (entrada de arquivo) e **1.3.2**
+(triagem de qualidade) da EAP.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -31,13 +32,31 @@ Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar) e
   toolbar do dossiê (novo / exemplo / exportar / importar) + navegação
   lateral pelas 17 fases + indicador de qual fase já tem dado gravado.
   Navegação por hash da URL (`#fase-08`), então recarregar a página mantém a
-  fase selecionada. Nenhuma fase de análise está implementada de verdade
-  ainda — cada tela mostra o que entra, o que sai, o critério de passagem, e
-  os dados da seção correspondente do dossiê quando existem.
+  fase selecionada.
+- `js/video-metadados.js` — a primeira fase de análise de verdade (F02-01):
+  lê um arquivo MP4 direto no `<video>`/`<canvas>` do navegador — duração,
+  resolução, orientação, fps estimado (via `requestVideoFrameCallback`,
+  contando quadros decodificados de verdade por ~1s) e uma amostra de
+  luminância média (para detectar vídeo escuro). Zero upload a servidor.
+- `js/video-qualidade.js` — a triagem automática (F02-02): recusa vídeo
+  abaixo de 720p, com fps abaixo de 20, visivelmente escuro ou curto demais,
+  cada recusa com uma frase que explica o que regravar. A checagem de
+  duração mínima "por número de ciclos" do plano ainda não dá para fazer —
+  depende da detecção de ciclos (pacote 1.3.5) — e isso fica dito na tela,
+  não fingido.
+- `js/fase02-ui.js` — liga os dois módulos acima à tela da fase 02: escolher
+  arquivo, mostrar os metadados, mostrar o resultado da triagem, e um botão
+  "gravar no dossiê" que só habilita se o vídeo foi aprovado (vídeo
+  reprovado não avança — mesma regra do organograma: "não se tenta salvar
+  material ruim adiante").
 - `tests/dossie.test.mjs` — testes do formato e do round-trip
   exportar → importar.
 - `tests/fases.test.mjs` — testes de integridade dos metadados das 17 fases
   (numeração, campos obrigatórios, seções do dossiê referenciadas existem).
+- `tests/video-qualidade.test.mjs` — testes da regra de triagem (pura, sem
+  vídeo/DOM, roda no Node). A leitura de metadados em si só faz sentido num
+  navegador de verdade — foi conferida manualmente com vídeos sintéticos
+  (ver "Como isso foi testado" abaixo).
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -78,13 +97,41 @@ Para rodar os testes (Node 18+):
 node --test
 ```
 
+## Como isso foi testado
+
+O `estimarFps` precisa de vídeo de verdade tocando no navegador, então não
+dá para testar com node:test. Validação manual num Chromium real
+(Playwright), com vídeos sintéticos gerados em memória via
+`canvas.captureStream()` + `MediaRecorder` (o ambiente não tinha um
+codificador MP4/H.264 disponível para gerar arquivos de teste, só vp8/webm —
+mas `video-metadados.js` não olha extensão de arquivo, só o `Blob.type`,
+então isso testa o código de verdade):
+
+- Vídeo bom (1280×720, ~46fps efetivo, bem iluminado): aprovado, botão
+  "gravar" habilita só depois de existir um dossiê, grava em `origemVideo` e
+  o indicador da fase 02 acende.
+- Resolução baixa (320×240): recusado, com a frase certa.
+- Vídeo escuro: recusado por luminância.
+- Vídeo muito curto (0,3s): recusado por duração — isso também expôs e
+  corrigiu um bug real: `estimarFps` ficava esperando para sempre num vídeo
+  mais curto que a janela de amostragem, porque o vídeo termina (evento
+  `ended`) antes de gerar frame suficiente e a promise nunca resolvia.
+- Arquivo que não é vídeo de verdade: erro legível, nenhum erro de página.
+- Tempo até os metadados aparecerem: ~1,3–1,4s — dentro do "menos de 2
+  segundos" do cartão F02-01, mas perto do limite (a amostragem de fps usa
+  uma janela de 1s pensada para tolerar variação de quadro-a-quadro; se
+  isso apertar demais o orçamento em vídeos reais, é o primeiro parâmetro a
+  revisitar).
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - 1.2.2 — regra de imutabilidade (quando cada fase deve gravar versão nova).
   Adiado porque ainda não existe nenhuma fase de análise real reprocessando
   dado — a regra hoje não teria o que aplicar de verdade.
 - 1.2.5 — painel de registro e custo (frames processados, chamadas feitas,
-  gasto estimado).
-- 1.3.x em diante — pipeline de análise de verdade (upload de MP4, triagem
-  de qualidade, extração de frames...), que é o que vai preencher as telas
-  que hoje só mostram "esta fase ainda não rodou".
+  gasto estimado). Ainda abstrato: só faz sentido depois que 1.3.3
+  (extração de ~1200 frames) existir e demorar o suficiente para precisar
+  de feedback de progresso.
+- 1.3.3 em diante — extração de frames, curvas de movimento, detecção de
+  ciclos, fatiamento em micro-ações. É o que vai preencher as fases 03 a 05,
+  hoje mostrando "esta fase ainda não rodou".

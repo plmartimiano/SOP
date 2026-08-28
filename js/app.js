@@ -3,9 +3,10 @@
 // (#fase-08) para que voltar/avançar no navegador e recarregar a página
 // mantenham a fase selecionada — sem framework, sem build.
 
-import { criarDossieVazio, obterVersaoAtual, obterHistorico, SECOES } from "./dossie.js";
+import { criarDossieVazio, adicionarVersao, obterVersaoAtual, obterHistorico, SECOES } from "./dossie.js";
 import { exportarDossie, importarDossieDeArquivo, ErroImportacao } from "./dossie-io.js";
 import { FASES } from "./fases.js";
+import { montarIngestao } from "./fase02-ui.js";
 
 let dossie = null;
 
@@ -115,12 +116,25 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
+        ${fase.numero === "02" ? `<div class="ferramenta"><h3>Processar vídeo</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
         </div>
       </div>
     </article>`;
+
+  if (fase.numero === "02") {
+    montarIngestao(document.getElementById("faseFerramenta"), {
+      obterDossie: () => dossie,
+      onGravar: (dadosOrigemVideo) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "origemVideo", dadosOrigemVideo, { origem: "F02-01/F02-02" });
+        renderTudo();
+        mostrarStatus("Origem do vídeo gravada no dossiê (seção \"origemVideo\").", "ok");
+      },
+    });
+  }
 }
 
 function renderDossieToolbar() {
