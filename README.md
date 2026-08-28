@@ -11,8 +11,9 @@ processo e EAP.
 Pacotes **1.1.2** (mapa de zonas da bancada), **1.2.1** (formato do
 dossiê), **1.2.3** (exportar/importar), **1.2.4** (interface por etapa),
 **1.3.1** (entrada de arquivo), **1.3.2** (triagem de qualidade), **1.3.3**
-(extração de frames) e **1.3.4** (curva de movimento, geral **e** por
-zona) da EAP.
+(extração de frames), **1.3.4** (curva de movimento, geral **e** por zona)
+e **1.3.5** (detecção de ciclos — ver ressalva sobre a revisão visual
+arrastável) da EAP.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -102,6 +103,30 @@ zona) da EAP.
 - `tests/mapa-zonas.test.mjs` — testes de geometria e validação de zona
   (nome vazio, tipo fora da lista, retângulo sem área, renumeração após
   remover). O desenho em canvas em si só se testa no navegador.
+- `js/deteccao-ciclos.js` — detecção automática de ciclos (F04-01 a F04-05):
+  autocorrelação da curva de movimento estima a duração do ciclo (o
+  primeiro pico local, ignorando deslocamentos curtos demais pra serem um
+  ciclo de verdade); a matriz de auto-similaridade (cada frame comparado
+  com todos os outros) é o que desenha as diagonais paralelas do cartão
+  F04-01; a partir do frame 0 como marco zero, procura as repetições mais
+  parecidas dentro de uma janela ao redor da duração estimada (tolerando
+  até 30% de variação de ritmo) e corta os ciclos entre elas; primeiro e
+  último ciclo saem marcados como suspeitos, não descartados. **Sem período
+  detectável, devolve uma lista vazia** — nunca inventa um ciclo do
+  tamanho do vídeo inteiro pra não ficar sem resposta.
+- `js/fase04-ui.js` — tela da fase 04: se a fase 03 não gravou frames, ou
+  se os frames não estão mais na sessão (mesma situação do vídeo/frames nas
+  fases 02/03), explica em vez de fingir. Com frames disponíveis, detecta,
+  desenha a matriz de auto-similaridade (sempre, mesmo sem ciclo detectado
+  — é diagnóstico útil por si só) e lista os ciclos numa tabela com os
+  suspeitos destacados, gravando em `ciclos`.
+- `tests/deteccao-ciclos.test.mjs` — testes com sinais sintéticos pequenos
+  o bastante pra conferir o resultado na mão: autocorrelação acerta o
+  período de um sinal periódico simples, `estimarDuracaoCiclo` devolve
+  `null` (não trava, não inventa) pra sinal monótono, plano ou com poucos
+  pontos, a matriz é zero na diagonal e simétrica, `encontrarAncoras` acha
+  as repetições certas, e um teste de ponta a ponta confirma 4 ciclos de 2s
+  cada com pontas marcadas suspeitas.
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -214,8 +239,30 @@ outra, exatamente o que o cartão F03-04 promete ("pra qual escaninho a mão
 foi"). Sem zona mapeada, a tela volta a mostrar só a curva geral, sem
 tentar desenhar gráficos vazios.
 
+A detecção de ciclos (1.3.5) foi validada de duas formas. Primeiro, com os
+sinais sintéticos exatos dos testes automatizados (bloco `[0,0,0,100]`
+repetido 4 vezes), confirmando que o algoritmo acha o período certo (4
+frames = 2s) e corta 4 ciclos de exatamente 2s cada. Depois, no Chromium,
+encadeando os quatro pacotes de verdade: gerei um vídeo de 8s com 4 ciclos
+de 2s (1s "parado" + 1s de um bloco branco crescendo, simulando ação),
+ingeri, extraí frames e detectei ciclos. O programa estimou 2,0s de duração
+de ciclo (o valor exato) e cortou 3 ciclos completos (0–2s, 2–4s, 4–6,5s);
+o trecho final do vídeo (~1,5s) não tinha correspondência de fechamento
+dentro da janela de tolerância e ficou de fora da lista — não virou um
+quarto ciclo forjado, que é o comportamento certo diante de um pedaço sem
+repetição confirmada. Testei também um vídeo sem repetição nenhuma (cor
+parada o tempo todo): a tela mostrou a mensagem de "nenhum padrão
+repetitivo detectado" e a matriz de auto-similaridade sozinha, como
+diagnóstico, sem oferecer o botão de gravar. Nenhum erro de página em
+nenhum dos casos.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
+- 1.3.5 (parte pendente) — revisão visual dos cortes com correção
+  arrastável (F04-06: "uma tira de miniaturas com as linhas de corte, e a
+  pessoa arrasta se estiver errado"). A detecção automática existe; falta
+  a tela de edição interativa que recalcula os ciclos seguintes quando um
+  corte é ajustado à mão.
 - 1.2.2 — regra de imutabilidade (quando cada fase deve gravar versão nova).
   Adiado porque ainda não existe nenhuma fase de análise real reprocessando
   dado — a regra hoje não teria o que aplicar de verdade.
@@ -223,7 +270,7 @@ tentar desenhar gráficos vazios.
   gasto estimado). Ainda abstrato: só faz sentido quando a extração demorar
   o suficiente (vídeo de vários minutos) para precisar de feedback de
   progresso — hoje o vídeo de teste extrai em menos de 1 segundo.
-- 1.3.5 em diante — detecção de ciclos, fatiamento em micro-ações. É o que
-  vai preencher as fases 04 e 05, hoje mostrando "esta fase ainda não
-  rodou". A detecção de ciclos consome exatamente a `curvaMovimento` que o
-  1.3.4 acabou de gravar.
+- 1.3.6 — fatiamento em micro-ações (fase 05), o próximo passo natural: usa
+  os ciclos que o 1.3.5 acabou de cortar mais os vales da curva de
+  movimento pra achar as fronteiras entre uma ação e outra dentro de cada
+  ciclo.

@@ -6,23 +6,28 @@
 // zona do mapa de zonas (mapa-zonas.js, pacote 1.1.2) — é o que revela
 // pra qual escaninho a mão foi, sem custo nenhum de modelo.
 
-// Diferença média absoluta de pixel entre cada par de frames vizinhos,
-// 0–255, olhando só os índices dados (ou o frame inteiro se `indices` for
-// omitido). O primeiro frame não tem "anterior", então a curva tem um
-// ponto a menos que a lista de frames.
+// Diferença média absoluta de pixel entre dois frames (0–255), olhando só
+// os índices dados (ou todos, se `indices` for omitido). Não exige que os
+// frames sejam vizinhos no tempo — deteccao-ciclos.js (pacote 1.3.5) reusa
+// isso pra comparar frames quaisquer entre si, não só consecutivos.
+export function diferencaMediaPixel(a, b, indices) {
+  let soma = 0;
+  if (!indices) {
+    for (let p = 0; p < a.length; p++) soma += Math.abs(a[p] - b[p]);
+    return soma / a.length;
+  }
+  for (const p of indices) soma += Math.abs(a[p] - b[p]);
+  return indices.length ? soma / indices.length : 0;
+}
+
+// A série ao longo do tempo, comparando cada frame só com o anterior. O
+// primeiro frame não tem "anterior", então a curva tem um ponto a menos
+// que a lista de frames.
 function serieDiferenca(frames, indices) {
   const pontos = [];
   for (let i = 1; i < frames.length; i++) {
-    const anterior = frames[i - 1].cinzas;
-    const atual = frames[i].cinzas;
-    let soma = 0;
-    if (!indices) {
-      for (let p = 0; p < atual.length; p++) soma += Math.abs(atual[p] - anterior[p]);
-      pontos.push({ tempoSegundos: frames[i].tempoSegundos, valor: soma / atual.length });
-    } else {
-      for (const p of indices) soma += Math.abs(atual[p] - anterior[p]);
-      pontos.push({ tempoSegundos: frames[i].tempoSegundos, valor: indices.length ? soma / indices.length : 0 });
-    }
+    const valor = diferencaMediaPixel(frames[i - 1].cinzas, frames[i].cinzas, indices);
+    pontos.push({ tempoSegundos: frames[i].tempoSegundos, valor });
   }
   return pontos;
 }

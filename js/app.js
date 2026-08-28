@@ -9,7 +9,8 @@ import { FASES } from "./fases.js";
 import { montarMapaZonas } from "./fase00-ui.js";
 import { montarIngestao } from "./fase02-ui.js";
 import { montarExtracao } from "./fase03-ui.js";
-import { definirVideoAprovado, obterVideoAprovado, limparSessaoMidia } from "./sessao-midia.js";
+import { montarDeteccaoCiclos } from "./fase04-ui.js";
+import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
 
@@ -17,6 +18,7 @@ const TITULO_FERRAMENTA = {
   "00": "Mapear zonas da bancada",
   "02": "Processar vídeo",
   "03": "Extrair frames",
+  "04": "Detectar ciclos",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -125,7 +127,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -169,6 +171,19 @@ function renderPainel() {
         adicionarVersao(dossie, "frames", dadosFrames, { origem: "F03-01/F03-02" });
         renderTudo();
         mostrarStatus("Frames gravados no dossiê (seção \"frames\").", "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "04") {
+    montarDeteccaoCiclos(document.getElementById("faseFerramenta"), {
+      framesRodouNoDossie: dossie ? obterVersaoAtual(dossie, "frames") !== null : false,
+      frames: obterFramesExtraidos(),
+      onGravar: (dadosCiclos) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "ciclos", dadosCiclos, { origem: "F04-01/F04-02/F04-03/F04-04/F04-05" });
+        renderTudo();
+        mostrarStatus(`Ciclos gravados no dossiê (${dadosCiclos.total} ciclo${dadosCiclos.total === 1 ? "" : "s"}).`, "ok");
       },
     });
   }

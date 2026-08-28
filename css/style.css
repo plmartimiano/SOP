@@ -124,6 +124,14 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 .grafico-zona-nome{font-size:11px;color:var(--steel);display:block;margin-bottom:4px}
 .grafico-zona canvas{width:100%;height:70px;display:block}
 
+#matrizCanvas{width:100%;max-width:300px;height:auto;aspect-ratio:1/1;display:block;border:1px solid var(--line)}
+
+.ciclos-tabela{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px}
+.ciclos-tabela th{text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);border-bottom:2px solid var(--ink);padding:6px 8px}
+.ciclos-tabela td{padding:6px 8px;border-bottom:1px solid var(--line)}
+.ciclos-tabela tr.ciclo-suspeito{background:#FFFDF4}
+.ciclos-tabela tr.ciclo-suspeito td:last-child{color:#8A6800}
+
 .mapa-instrucao{font-size:13.5px;color:var(--ink-soft);margin:10px 0 8px}
 #mapaCanvas{border:1px solid var(--line);background:#fff;cursor:crosshair;max-width:100%;display:block}
 .mapa-form{margin-top:10px;border:1px solid var(--line);background:#FFFDF4;padding:10px 12px}
