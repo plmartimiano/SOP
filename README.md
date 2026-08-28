@@ -9,8 +9,8 @@ processo e EAP.
 ## O que já existe
 
 Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
-**1.2.4** (interface por etapa), **1.3.1** (entrada de arquivo) e **1.3.2**
-(triagem de qualidade) da EAP.
+**1.2.4** (interface por etapa), **1.3.1** (entrada de arquivo), **1.3.2**
+(triagem de qualidade) e **1.3.3** (extração de frames) da EAP.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -49,6 +49,19 @@ Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
   "gravar no dossiê" que só habilita se o vídeo foi aprovado (vídeo
   reprovado não avança — mesma regra do organograma: "não se tenta salvar
   material ruim adiante").
+- `js/sessao-midia.js` — o arquivo de vídeo em si e as miniaturas extraídas
+  não entram no dossiê (JSON ficaria enorme — o mesmo risco do F01-01).
+  Ficam num estado de sessão à parte, só na memória da aba atual. Trocar de
+  dossiê (novo, exemplo, importar) limpa esse estado — o vídeo de um dossiê
+  antigo não pode vazar para o novo.
+- `js/frames-extrator.js` — a extração de verdade (F03-01 + F03-02): amostra
+  o vídeo a 2 quadros/segundo por busca de tempo (`seek`) e gera de cada um
+  uma miniatura 64×64 em tons de cinza.
+- `js/fase03-ui.js` — tela da fase 03: se a fase 02 não gravou vídeo
+  aprovado, ou se o vídeo não está mais na sessão (página recarregada, outro
+  dossiê carregado), explica isso em vez de fingir que tem o vídeo. Com
+  vídeo disponível, extrai, mostra a fita de miniaturas e grava
+  `taxaAmostragemFps` + `total` + `tempos` na seção `frames`.
 - `tests/dossie.test.mjs` — testes do formato e do round-trip
   exportar → importar.
 - `tests/fases.test.mjs` — testes de integridade dos metadados das 17 fases
@@ -123,15 +136,23 @@ então isso testa o código de verdade):
   isso apertar demais o orçamento em vídeos reais, é o primeiro parâmetro a
   revisitar).
 
+A extração de frames (1.3.3) foi validada no mesmo Chromium, encadeada com a
+ingestão: sem vídeo aprovado no dossiê, a tela explica e não mostra a
+ferramenta; com vídeo aprovado, extrai (vídeo de ~3s a 2/s deu 6 frames, em
+~0,8s), mostra a fita de miniaturas e grava em `frames`. Criar um dossiê novo
+depois de extrair limpa a sessão de mídia — voltando à fase 03 sem
+reprocessar o vídeo mostra de novo a mensagem pedindo para reprocessar, em
+vez de tentar usar um vídeo que já não é mais o do dossiê atual.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - 1.2.2 — regra de imutabilidade (quando cada fase deve gravar versão nova).
   Adiado porque ainda não existe nenhuma fase de análise real reprocessando
   dado — a regra hoje não teria o que aplicar de verdade.
 - 1.2.5 — painel de registro e custo (frames processados, chamadas feitas,
-  gasto estimado). Ainda abstrato: só faz sentido depois que 1.3.3
-  (extração de ~1200 frames) existir e demorar o suficiente para precisar
-  de feedback de progresso.
-- 1.3.3 em diante — extração de frames, curvas de movimento, detecção de
-  ciclos, fatiamento em micro-ações. É o que vai preencher as fases 03 a 05,
+  gasto estimado). Ainda abstrato: só faz sentido quando a extração demorar
+  o suficiente (vídeo de vários minutos) para precisar de feedback de
+  progresso — hoje o vídeo de teste extrai em menos de 1 segundo.
+- 1.3.4 em diante — curvas de movimento (geral e por zona), detecção de
+  ciclos, fatiamento em micro-ações. É o que vai preencher as fases 04 e 05,
   hoje mostrando "esta fase ainda não rodou".

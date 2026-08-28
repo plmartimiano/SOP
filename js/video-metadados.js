@@ -63,7 +63,9 @@ export function estimarFps(videoEl, janelaMs = 1000) {
   });
 }
 
-function buscarTempo(videoEl, tempoSegundos) {
+// Exportada porque a extração de frames (frames-extrator.js, pacote 1.3.3)
+// precisa do mesmo mecanismo de busca por tempo.
+export function buscarTempo(videoEl, tempoSegundos) {
   return new Promise((resolve) => {
     videoEl.addEventListener("seeked", resolve, { once: true });
     videoEl.currentTime = tempoSegundos;

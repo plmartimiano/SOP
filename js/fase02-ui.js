@@ -46,7 +46,7 @@ export function montarIngestao(container, { obterDossie, onGravar }) {
     resultadoEl.innerHTML = `<div class="status show erro">${mensagem}</div>`;
   }
 
-  function renderResultado(dados, triagem) {
+  function renderResultado(dados, triagem, file) {
     const linhas = [
       linhaMeta("Duração", `${dados.duracaoSegundos.toFixed(1)}s`),
       linhaMeta("Resolução", formatarResolucao(dados.resolucao)),
@@ -72,7 +72,7 @@ export function montarIngestao(container, { obterDossie, onGravar }) {
 
     const btnGravar = resultadoEl.querySelector("#ingestaoGravar");
     if (btnGravar) {
-      btnGravar.addEventListener("click", () => onGravar(dados));
+      btnGravar.addEventListener("click", () => onGravar(dados, file));
     }
   }
 
@@ -85,7 +85,7 @@ export function montarIngestao(container, { obterDossie, onGravar }) {
     try {
       const dados = await lerVideo(file, { videoEl, canvasEl });
       const triagem = triarQualidade(dados);
-      renderResultado(dados, triagem);
+      renderResultado(dados, triagem, file);
     } catch (e) {
       renderErro(e.message || "Erro inesperado ao ler o vídeo.");
     }

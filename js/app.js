@@ -7,6 +7,8 @@ import { criarDossieVazio, adicionarVersao, obterVersaoAtual, obterHistorico, SE
 import { exportarDossie, importarDossieDeArquivo, ErroImportacao } from "./dossie-io.js";
 import { FASES } from "./fases.js";
 import { montarIngestao } from "./fase02-ui.js";
+import { montarExtracao } from "./fase03-ui.js";
+import { definirVideoAprovado, obterVideoAprovado, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
 
@@ -116,7 +118,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${fase.numero === "02" ? `<div class="ferramenta"><h3>Processar vídeo</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["02", "03"].includes(fase.numero) ? `<div class="ferramenta"><h3>${fase.numero === "02" ? "Processar vídeo" : "Extrair frames"}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -127,11 +129,25 @@ function renderPainel() {
   if (fase.numero === "02") {
     montarIngestao(document.getElementById("faseFerramenta"), {
       obterDossie: () => dossie,
-      onGravar: (dadosOrigemVideo) => {
+      onGravar: (dadosOrigemVideo, file) => {
         if (!dossie) return;
         adicionarVersao(dossie, "origemVideo", dadosOrigemVideo, { origem: "F02-01/F02-02" });
+        definirVideoAprovado(file, dadosOrigemVideo);
         renderTudo();
         mostrarStatus("Origem do vídeo gravada no dossiê (seção \"origemVideo\").", "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "03") {
+    montarExtracao(document.getElementById("faseFerramenta"), {
+      videoAprovadoNoDossie: dossie ? obterVersaoAtual(dossie, "origemVideo") !== null : false,
+      video: obterVideoAprovado(),
+      onGravar: (dadosFrames) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "frames", dadosFrames, { origem: "F03-01/F03-02" });
+        renderTudo();
+        mostrarStatus("Frames gravados no dossiê (seção \"frames\").", "ok");
       },
     });
   }
@@ -156,6 +172,7 @@ function renderTudo() {
 
 document.getElementById("btnNovo").addEventListener("click", () => {
   dossie = criarDossieVazio({ nome: "Estação nova" });
+  limparSessaoMidia();
   limparStatus();
   renderTudo();
 });
@@ -163,6 +180,7 @@ document.getElementById("btnNovo").addEventListener("click", () => {
 document.getElementById("btnExemplo").addEventListener("click", async () => {
   const resp = await fetch("fixtures/dossie-exemplo.json");
   dossie = await resp.json();
+  limparSessaoMidia();
   limparStatus();
   renderTudo();
 });
@@ -180,6 +198,7 @@ document.getElementById("inputImportar").addEventListener("change", async (ev) =
   try {
     const { dossie: carregado, avisos } = await importarDossieDeArquivo(file);
     dossie = carregado;
+    limparSessaoMidia();
     renderTudo();
     if (avisos.length) {
       mostrarStatus("Dossiê carregado, com avisos:", "erro", avisos);

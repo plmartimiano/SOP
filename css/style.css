@@ -112,6 +112,9 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 .ferramenta h3{margin:0 0 10px;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--steel)}
 .ingestao-carregando{font-size:13.5px;color:var(--ink-soft);margin-top:10px}
 
+.filmstrip{display:flex;gap:4px;overflow-x:auto;margin-top:10px;padding:8px;border:1px solid var(--line);background:#fff}
+.filmstrip img{image-rendering:pixelated;border:1px solid var(--line);flex:0 0 auto}
+
 .estado{margin-top:16px;border-top:2px solid var(--ink);padding-top:14px}
 .estado h3{margin:0 0 10px;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--steel)}
 .estado .vaziomsg{font-size:14px;color:var(--ink-soft)}
