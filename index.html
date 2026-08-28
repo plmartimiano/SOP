@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dossiê SOP — formato e exportar/importar</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">EAP 1.2.1 + 1.2.3 · demonstração</div>
+    <h1>Dossiê do SOP</h1>
+    <p>O arquivo único que atravessa todas as fases do pipeline. Esta tela existe só para exercitar o formato e o exportar/importar — a interface por etapa (1.2.4) vem depois.</p>
+  </div>
+  <div class="beltstrip"></div>
+</header>
+
+<div class="wrap">
+
+  <section class="panel">
+    <div class="panelhead">
+      <span class="code mono">1.2.1</span>
+      <h2>Dossiê atual</h2>
+    </div>
+    <div class="panelbody">
+      <div class="row">
+        <button class="act" id="btnNovo">Novo dossiê vazio</button>
+        <button class="act secondary" id="btnExemplo">Carregar exemplo fictício</button>
+      </div>
+      <div class="resumo" id="resumo" aria-live="polite"></div>
+      <details class="jsonview" id="jsonview" hidden>
+        <summary>Ver JSON completo</summary>
+        <pre class="jsontext mono" id="jsontext"></pre>
+      </details>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panelhead">
+      <span class="code mono">1.2.3</span>
+      <h2>Exportar e importar</h2>
+    </div>
+    <div class="panelbody">
+      <div class="row">
+        <button class="act" id="btnExportar" disabled>Baixar dossiê (.json)</button>
+        <label class="act secondary" style="cursor:pointer">
+          Carregar dossiê
+          <input type="file" id="inputImportar" accept="application/json,.json" style="display:none">
+        </label>
+      </div>
+      <div class="status" id="status" role="status"></div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Teste o ciclo completo do cartão F01-03: baixe o dossiê, feche esta aba, reabra a página e carregue o arquivo — o conteúdo volta exatamente como estava.</p>
+  </div>
+</footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

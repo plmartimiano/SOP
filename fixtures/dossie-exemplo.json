@@ -1,0 +1,186 @@
+{
+  "formatVersion": "1.0.0",
+  "criadoEm": "2026-08-10T13:02:00.000Z",
+  "atualizadoEm": "2026-08-12T09:41:00.000Z",
+  "estacao": {
+    "nome": "Estação 4 — Montagem do suporte L-32",
+    "linha": "Linha 2 — Subconjuntos"
+  },
+  "secoes": {
+    "origemVideo": {
+      "versoes": [
+        {
+          "versao": 1,
+          "data": "2026-08-10T13:05:00.000Z",
+          "origem": "F02-01",
+          "dados": {
+            "arquivoNome": "estacao4-piloto-2026-08-10.mp4",
+            "duracaoSegundos": 612,
+            "resolucao": { "largura": 1920, "altura": 1080 },
+            "fps": 30,
+            "orientacao": "horizontal",
+            "cortes": { "inicioSegundos": 8, "fimSegundos": 601 }
+          }
+        }
+      ]
+    },
+    "mapaDeZonas": {
+      "versoes": [
+        {
+          "versao": 1,
+          "data": "2026-08-10T09:00:00.000Z",
+          "origem": "F00-03",
+          "dados": {
+            "frameReferencia": { "tempoSegundos": 0 },
+            "dataMapeamento": "2026-08-10",
+            "zonas": [
+              { "id": "Z01", "nomeOficial": "Escaninho suporte L-32", "codigoInterno": "COMP-L32", "tipo": "escaninho" },
+              { "id": "Z02", "nomeOficial": "Escaninho parafuso M4x12", "codigoInterno": "COMP-M4X12", "tipo": "escaninho" },
+              { "id": "Z03", "nomeOficial": "Suporte da chave de torque", "codigoInterno": "FERR-TORQ-01", "tipo": "ferramenta" },
+              { "id": "Z04", "nomeOficial": "Área de trabalho", "codigoInterno": "AREA-01", "tipo": "area_trabalho" },
+              { "id": "Z05", "nomeOficial": "Saída para estação 5", "codigoInterno": "SAIDA-01", "tipo": "saida" }
+            ]
+          }
+        }
+      ]
+    },
+    "frames": {
+      "versoes": [
+        {
+          "versao": 1,
+          "data": "2026-08-10T13:07:00.000Z",
+          "origem": "F03-01",
+          "dados": {
+            "taxaAmostragemFps": 2,
+            "total": 1186,
+            "curvaMovimentoRef": "curvas/estacao4-piloto-2026-08-10-movimento.json",
+            "curvasPorZonaRef": "curvas/estacao4-piloto-2026-08-10-zonas.json"
+          }
+        }
+      ]
+    },
+    "ciclos": {
+      "versoes": [
+        {
+          "versao": 1,
+          "data": "2026-08-10T13:09:00.000Z",
+          "origem": "F04-04",
+          "dados": {
+            "total": 5,
+            "lista": [
+              { "indice": 1, "inicioSegundos": 8, "fimSegundos": 128, "duracaoSegundos": 120, "suspeito": true, "motivoSuspeita": "primeiro ciclo, ritmo mais lento" },
+              { "indice": 2, "inicioSegundos": 128, "fimSegundos": 241, "duracaoSegundos": 113, "suspeito": false },
+              { "indice": 3, "inicioSegundos": 241, "fimSegundos": 356, "duracaoSegundos": 115, "suspeito": false },
+              { "indice": 4, "inicioSegundos": 356, "fimSegundos": 471, "duracaoSegundos": 115, "suspeito": false },
+              { "indice": 5, "inicioSegundos": 471, "fimSegundos": 601, "duracaoSegundos": 130, "suspeito": true, "motivoSuspeita": "último ciclo, interrompido" }
+            ]
+          }
+        }
+      ]
+    },
+    "microAcoes": {
+      "versoes": [
+        {
+          "versao": 1,
+          "data": "2026-08-10T13:15:00.000Z",
+          "origem": "F05-04",
+          "dados": {
+            "porCiclo": [
+              {
+                "cicloIndice": 3,
+                "fatias": [
+                  { "indice": 1, "inicioSegundos": 241, "fimSegundos": 249, "causa": "componente_novo", "frameChave": { "tempoSegundos": 245 } },
+                  { "indice": 2, "inicioSegundos": 249, "fimSegundos": 261, "causa": "componente_novo", "frameChave": { "tempoSegundos": 254 } },
+                  { "indice": 3, "inicioSegundos": 261, "fimSegundos": 279, "causa": "troca_ferramenta", "frameChave": { "tempoSegundos": 268 } },
+                  { "indice": 4, "inicioSegundos": 279, "fimSegundos": 312, "causa": "troca_ferramenta", "frameChave": { "tempoSegundos": 297 } },
+                  { "indice": 5, "inicioSegundos": 312, "fimSegundos": 331, "causa": "pausa_conferencia", "frameChave": { "tempoSegundos": 320 } },
+                  { "indice": 6, "inicioSegundos": 331, "fimSegundos": 356, "causa": "componente_novo", "frameChave": { "tempoSegundos": 344 } }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "reconhecimento": {
+      "versoes": [
+        {
+          "versao": 1,
+          "data": "2026-08-11T10:00:00.000Z",
+          "origem": "F08-05",
+          "dados": {
+            "componentes": [
+              { "nomeOficial": "Suporte L-32", "codigoInterno": "COMP-L32", "zonaId": "Z01" },
+              { "nomeOficial": "Parafuso M4x12", "codigoInterno": "COMP-M4X12", "zonaId": "Z02" }
+            ],
+            "ferramentas": [
+              { "nomeOficial": "Chave de torque", "codigoInterno": "FERR-TORQ-01", "tempoUsoSegundos": 41 }
+            ],
+            "acoesEstaveis": 6,
+            "verificacoes": [
+              { "descricao": "Conferência visual do encaixe", "naoFundivel": true }
+            ],
+            "cicloDuracaoSegundos": 115,
+            "alternativasAgrupamento": [
+              { "criterio": "por_ferramenta_compartilhada", "justificativa": "agrupa ações que usam a mesma ferramenta em sequência" },
+              { "criterio": "por_subconjunto_produto", "justificativa": "agrupa pela peça que está sendo montada" }
+            ]
+          }
+        }
+      ]
+    },
+    "passos": {
+      "versoes": [
+        {
+          "versao": 1,
+          "data": "2026-08-11T11:00:00.000Z",
+          "origem": "F09-06",
+          "dados": [
+            { "numero": 1, "titulo": "Posicionar o suporte L-32", "criterioDeConclusao": "suporte encostado no batente" },
+            { "numero": 2, "titulo": "Encaixar o parafuso M4x12", "criterioDeConclusao": "parafuso não gira mais à mão" },
+            { "numero": 3, "titulo": "Parafusar com a chave de torque", "criterioDeConclusao": "clique audível da chave" },
+            { "numero": 4, "titulo": "Conectar o conector J3", "criterioDeConclusao": "trava do conector engatada" },
+            { "numero": 5, "titulo": "Testar o encaixe", "criterioDeConclusao": "luz verde no testador de bancada" },
+            { "numero": 6, "titulo": "Transferir para a saída", "criterioDeConclusao": "peça na esteira de saída" }
+          ]
+        },
+        {
+          "versao": 2,
+          "data": "2026-08-12T09:41:00.000Z",
+          "origem": "F11-02 (correção da mesa de validação)",
+          "dados": [
+            { "numero": 1, "titulo": "Posicionar o suporte L-32 na base", "criterioDeConclusao": "suporte encostado no batente" },
+            { "numero": 2, "titulo": "Encaixar o parafuso M4x12", "criterioDeConclusao": "parafuso não gira mais à mão" },
+            { "numero": 3, "titulo": "Parafusar com a chave de torque", "criterioDeConclusao": "clique audível da chave" },
+            { "numero": 4, "titulo": "Conectar o conector J3", "criterioDeConclusao": "trava do conector engatada" },
+            { "numero": 5, "titulo": "Testar o encaixe no testador", "criterioDeConclusao": "luz verde no testador de bancada" },
+            { "numero": 6, "titulo": "Transferir para a esteira de saída", "criterioDeConclusao": "peça na esteira de saída" }
+          ]
+        }
+      ]
+    },
+    "prompts": {
+      "versoes": []
+    },
+    "imagens": {
+      "versoes": []
+    },
+    "aprovacoes": {
+      "versoes": [
+        {
+          "versao": 1,
+          "data": "2026-08-12T09:41:00.000Z",
+          "origem": "F11-04",
+          "dados": {
+            "fichas": {
+              "aprovadoPor": "Marina Souza",
+              "cargo": "Engenharia de processo",
+              "dataHora": "2026-08-12T09:41:00.000Z",
+              "editado": true
+            }
+          }
+        }
+      ]
+    }
+  }
+}
