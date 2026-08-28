@@ -46,11 +46,9 @@ export function montarCurva(frames, tamanhoJanela = 3) {
   }));
 }
 
-// A curva POR ZONA (F03-04) precisa da geometria das zonas da bancada
-// (mapa de zonas, cartão F00-03 / pacote EAP 1.1.2) para saber, dentro de
-// cada frame, quais pixels pertencem a qual escaninho. Esse pacote ainda
-// não existe — inventar zonas aqui seria fabricar dado que o vídeo não deu.
-// Por isso só a curva geral está implementada; quando 1.1.2 existir, esta
-// função ganha um parâmetro de zonas e passa a fatiar `cinzas` por região
-// em vez de somar o frame inteiro.
-export const CURVA_POR_ZONA_PENDENTE = "depende do mapa de zonas (pacote 1.1.2), ainda não implementado";
+// A curva POR ZONA (F03-04) precisa da geometria das zonas da bancada para
+// saber, dentro de cada frame, quais pixels pertencem a qual escaninho. O
+// mapa de zonas (cartão F00-03, pacote EAP 1.1.2, ver mapa-zonas.js) já
+// existe, mas esta função ainda não recebe as zonas nem fatia `cinzas` por
+// região — só soma o frame inteiro. Falta ligar as duas pontas.
+export const CURVA_POR_ZONA_PENDENTE = "mapa de zonas (1.1.2) já existe; falta cruzá-lo com os frames aqui";

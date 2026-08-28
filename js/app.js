@@ -6,11 +6,18 @@
 import { criarDossieVazio, adicionarVersao, obterVersaoAtual, obterHistorico, SECOES } from "./dossie.js";
 import { exportarDossie, importarDossieDeArquivo, ErroImportacao } from "./dossie-io.js";
 import { FASES } from "./fases.js";
+import { montarMapaZonas } from "./fase00-ui.js";
 import { montarIngestao } from "./fase02-ui.js";
 import { montarExtracao } from "./fase03-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
+
+const TITULO_FERRAMENTA = {
+  "00": "Mapear zonas da bancada",
+  "02": "Processar vídeo",
+  "03": "Extrair frames",
+};
 
 const sidebarEl = document.getElementById("sidebar");
 const painelEl = document.getElementById("painelFase");
@@ -118,13 +125,25 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["02", "03"].includes(fase.numero) ? `<div class="ferramenta"><h3>${fase.numero === "02" ? "Processar vídeo" : "Extrair frames"}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
         </div>
       </div>
     </article>`;
+
+  if (fase.numero === "00") {
+    montarMapaZonas(document.getElementById("faseFerramenta"), {
+      obterDossie: () => dossie,
+      onGravar: (dadosMapaDeZonas) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "mapaDeZonas", dadosMapaDeZonas, { origem: "F00-03" });
+        renderTudo();
+        mostrarStatus(`Mapa de zonas gravado no dossiê (${dadosMapaDeZonas.zonas.length} zona${dadosMapaDeZonas.zonas.length === 1 ? "" : "s"}).`, "ok");
+      },
+    });
+  }
 
   if (fase.numero === "02") {
     montarIngestao(document.getElementById("faseFerramenta"), {

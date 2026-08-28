@@ -80,7 +80,7 @@ export function montarExtracao(container, { videoAprovadoNoDossie, video, onGrav
       <div class="grafico-bloco">
         <h4>Curva de movimento — crua (cinza) e suavizada (azul)</h4>
         <canvas id="curvaCanvas" width="640" height="140"></canvas>
-        <p class="grafico-legenda">Curva por zona da bancada ainda não existe — depende do mapa de zonas (pacote 1.1.2), não implementado.</p>
+        <p class="grafico-legenda">Curva por zona da bancada ainda não existe — o mapa de zonas (pacote 1.1.2) já existe, mas ninguém ainda cruza a geometria das zonas com esses frames.</p>
       </div>
       <div class="row" style="margin-top:12px">
         <button class="act" id="extracaoGravar">Gravar no dossiê</button>

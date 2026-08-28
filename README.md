@@ -8,10 +8,11 @@ processo e EAP.
 
 ## O que já existe
 
-Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
-**1.2.4** (interface por etapa), **1.3.1** (entrada de arquivo), **1.3.2**
-(triagem de qualidade), **1.3.3** (extração de frames) e **1.3.4**
-(curva de movimento geral — ver ressalva sobre a curva por zona) da EAP.
+Pacotes **1.1.2** (mapa de zonas da bancada), **1.2.1** (formato do
+dossiê), **1.2.3** (exportar/importar), **1.2.4** (interface por etapa),
+**1.3.1** (entrada de arquivo), **1.3.2** (triagem de qualidade), **1.3.3**
+(extração de frames) e **1.3.4** (curva de movimento geral — ver ressalva
+sobre a curva por zona) da EAP.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -26,6 +27,17 @@ Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
 - `fixtures/dossie-exemplo.json` — exemplo fictício preenchido cobrindo as
   dez seções, incluindo uma seção (`passos`) com duas versões para mostrar
   que reprocessar não apaga a versão anterior.
+- `js/mapa-zonas.js` — geometria e validação de zona (F00-03): id
+  sequencial (`Z01`, `Z02`...), lista fechada de tipos (`escaninho`,
+  `ferramenta`, `area_trabalho`, `saida`), retângulo normalizado 0–1
+  (independente da resolução da foto usada). `renumerarZonas` corrige a
+  numeração depois de remover uma zona do meio da lista.
+- `js/fase00-ui.js` — a ferramenta de desenhar o mapa: sobe uma foto/frame
+  da bancada, arrasta um retângulo sobre a imagem, nomeia a zona num
+  formulário (nome oficial, código interno opcional, tipo), lista as zonas
+  já marcadas com botão de remover. A foto em si não entra no dossiê (mesmo
+  motivo do vídeo — ver `sessao-midia.js`); só a geometria e os nomes vão
+  para `mapaDeZonas`.
 - `js/fases.js` — metadados estáticos das 17 fases do organograma de
   processo (título, entra/sai/decide, critério de passagem, e a qual seção
   do dossiê cada uma corresponde). Só texto — nenhuma lógica de análise.
@@ -85,6 +97,9 @@ Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
   suavização com frames sintéticos (arrays pequenos, não vídeo de verdade):
   frames idênticos dão zero, preto→branco dá o máximo, um pico isolado é
   atenuado pela suavização mas um vale sustentado sobrevive.
+- `tests/mapa-zonas.test.mjs` — testes de geometria e validação de zona
+  (nome vazio, tipo fora da lista, retângulo sem área, renumeração após
+  remover). O desenho em canvas em si só se testa no navegador.
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -172,11 +187,28 @@ tamanho do frame; o vídeo de teste final usa uma mudança grande o
 suficiente para não se confundir com isso.) Gráfico desenhado no
 `<canvas>`, sem erro de página.
 
+O mapa de zonas (1.1.2) foi validado no mesmo Chromium: sem dossiê, a
+ferramenta ainda deixa desenhar (pra explorar), mas avisa que falta dossiê
+e mantém "gravar" desabilitado. Com dossiê, subir uma foto sintética
+800×600, arrastar um retângulo e preencher o formulário criou a zona com a
+geometria normalizada correta (conferida contra o pixel exato do arrasto);
+um arrasto minúsculo (menos de 8px) foi ignorado, sem abrir formulário; um
+nome vazio foi recusado pela validação; remover a primeira de duas zonas
+renumerou a que sobrou de `Z02` para `Z01`. Esse teste também expôs — e a
+correção foi validada antes deste commit — um bug real de listener
+duplicado: trocar de foto sem sair da fase registrava um segundo
+`mouseup` no `window` a cada upload, e nada removia o anterior, então um
+único arrasto acabava processado mais de uma vez. Corrigido guardando a
+referência do handler ativo num escopo que sobrevive entre montagens da
+tela, removendo o antigo antes de registrar o novo.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
-- 1.1.2 — mapa de zonas da bancada. Bloqueia a curva por zona (F03-04,
-  parte do 1.3.4 que ficou de fora) e a nomeação de componente por
-  geometria nas fases mais adiante (06, 08).
+- 1.3.4 (parte pendente) — curva de movimento **por zona** (F03-04): o
+  mapa de zonas (1.1.2) que faltava para isso já existe agora; falta
+  cruzar a geometria das zonas com os pixels de cada frame extraído na
+  fase 03. `curva-movimento.js` já está preparado para receber esse
+  parâmetro (ver `CURVA_POR_ZONA_PENDENTE`).
 - 1.2.2 — regra de imutabilidade (quando cada fase deve gravar versão nova).
   Adiado porque ainda não existe nenhuma fase de análise real reprocessando
   dado — a regra hoje não teria o que aplicar de verdade.
