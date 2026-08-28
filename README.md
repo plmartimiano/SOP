@@ -10,7 +10,8 @@ processo e EAP.
 
 Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
 **1.2.4** (interface por etapa), **1.3.1** (entrada de arquivo), **1.3.2**
-(triagem de qualidade) e **1.3.3** (extração de frames) da EAP.
+(triagem de qualidade), **1.3.3** (extração de frames) e **1.3.4**
+(curva de movimento geral — ver ressalva sobre a curva por zona) da EAP.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -57,11 +58,21 @@ Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
 - `js/frames-extrator.js` — a extração de verdade (F03-01 + F03-02): amostra
   o vídeo a 2 quadros/segundo por busca de tempo (`seek`) e gera de cada um
   uma miniatura 64×64 em tons de cinza.
+- `js/curva-movimento.js` — a curva de movimento geral (F03-03 + F03-05):
+  diferença média de pixel entre cada par de frames vizinhos (picos = ação,
+  vales = pausa) e uma suavização por média móvel curta que limpa ruído
+  pontual sem apagar um vale sustentado. **A curva por zona (F03-04) não
+  está implementada** — precisa da geometria do mapa de zonas (cartão
+  F00-03, pacote EAP 1.1.2), que ainda não existe; inventar zonas aqui seria
+  fabricar dado que o vídeo não deu. Isso fica dito na própria tela da fase
+  03, não escondido.
 - `js/fase03-ui.js` — tela da fase 03: se a fase 02 não gravou vídeo
   aprovado, ou se o vídeo não está mais na sessão (página recarregada, outro
   dossiê carregado), explica isso em vez de fingir que tem o vídeo. Com
-  vídeo disponível, extrai, mostra a fita de miniaturas e grava
-  `taxaAmostragemFps` + `total` + `tempos` na seção `frames`.
+  vídeo disponível, extrai, calcula e desenha a curva de movimento (crua e
+  suavizada, num `<canvas>`), mostra a fita de miniaturas, e grava
+  `taxaAmostragemFps` + `total` + `tempos` + `curvaMovimento` na seção
+  `frames`.
 - `tests/dossie.test.mjs` — testes do formato e do round-trip
   exportar → importar.
 - `tests/fases.test.mjs` — testes de integridade dos metadados das 17 fases
@@ -70,6 +81,10 @@ Pacotes **1.2.1** (formato do dossiê), **1.2.3** (exportar/importar),
   vídeo/DOM, roda no Node). A leitura de metadados em si só faz sentido num
   navegador de verdade — foi conferida manualmente com vídeos sintéticos
   (ver "Como isso foi testado" abaixo).
+- `tests/curva-movimento.test.mjs` — testes da diferença de pixel e da
+  suavização com frames sintéticos (arrays pequenos, não vídeo de verdade):
+  frames idênticos dão zero, preto→branco dá o máximo, um pico isolado é
+  atenuado pela suavização mas um vale sustentado sobrevive.
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -144,8 +159,24 @@ depois de extrair limpa a sessão de mídia — voltando à fase 03 sem
 reprocessar o vídeo mostra de novo a mensagem pedindo para reprocessar, em
 vez de tentar usar um vídeo que já não é mais o do dossiê atual.
 
+A curva de movimento (1.3.4) foi validada com dois vídeos sintéticos
+desenhados para dar sinal claro: um alterna metade da tela entre duas cores
+a cada 0,5s (mudança grande e real), outro fica com a cor parada o tempo
+todo. O primeiro vídeo produziu valores suavizados por volta de 80 (numa
+escala 0–255) enquanto o conteúdo realmente mudava entre amostras, caindo
+para perto de zero quando duas amostras seguidas pegaram a mesma cor — ou
+seja, a curva reage a mudança real de imagem, não a ruído. (Uma primeira
+tentativa com um retângulo pequeno se movendo não deu sinal claro — o
+ruído de compressão do vp8 dominava um elemento tão pequeno perto do
+tamanho do frame; o vídeo de teste final usa uma mudança grande o
+suficiente para não se confundir com isso.) Gráfico desenhado no
+`<canvas>`, sem erro de página.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
+- 1.1.2 — mapa de zonas da bancada. Bloqueia a curva por zona (F03-04,
+  parte do 1.3.4 que ficou de fora) e a nomeação de componente por
+  geometria nas fases mais adiante (06, 08).
 - 1.2.2 — regra de imutabilidade (quando cada fase deve gravar versão nova).
   Adiado porque ainda não existe nenhuma fase de análise real reprocessando
   dado — a regra hoje não teria o que aplicar de verdade.
@@ -153,6 +184,7 @@ vez de tentar usar um vídeo que já não é mais o do dossiê atual.
   gasto estimado). Ainda abstrato: só faz sentido quando a extração demorar
   o suficiente (vídeo de vários minutos) para precisar de feedback de
   progresso — hoje o vídeo de teste extrai em menos de 1 segundo.
-- 1.3.4 em diante — curvas de movimento (geral e por zona), detecção de
-  ciclos, fatiamento em micro-ações. É o que vai preencher as fases 04 e 05,
-  hoje mostrando "esta fase ainda não rodou".
+- 1.3.5 em diante — detecção de ciclos, fatiamento em micro-ações. É o que
+  vai preencher as fases 04 e 05, hoje mostrando "esta fase ainda não
+  rodou". A detecção de ciclos consome exatamente a `curvaMovimento` que o
+  1.3.4 acabou de gravar.

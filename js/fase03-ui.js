@@ -5,6 +5,7 @@
 // 02 em vez de fingir que tem o vídeo.
 
 import { extrairFrames } from "./frames-extrator.js";
+import { montarCurva } from "./curva-movimento.js";
 import { definirFramesExtraidos } from "./sessao-midia.js";
 
 // container: elemento onde a ferramenta é desenhada.
@@ -57,7 +58,8 @@ export function montarExtracao(container, { videoAprovadoNoDossie, video, onGrav
       });
 
       definirFramesExtraidos(frames);
-      renderResultado(frames);
+      const curva = montarCurva(frames);
+      renderResultado(frames, curva);
     } catch (e) {
       resultadoEl.innerHTML = `<div class="status show erro">${e.message || "Erro inesperado ao extrair frames."}</div>`;
     } finally {
@@ -67,7 +69,7 @@ export function montarExtracao(container, { videoAprovadoNoDossie, video, onGrav
     }
   });
 
-  function renderResultado(frames) {
+  function renderResultado(frames, curva) {
     const tiras = frames
       .map((f) => `<img src="${f.miniaturaDataUrl}" width="64" height="64" title="${f.tempoSegundos}s" alt="frame em ${f.tempoSegundos}s">`)
       .join("");
@@ -75,16 +77,62 @@ export function montarExtracao(container, { videoAprovadoNoDossie, video, onGrav
     resultadoEl.innerHTML = `
       <div class="status show ok">${frames.length} frames extraídos a 2 quadros/segundo (miniaturas 64×64, tons de cinza).</div>
       <div class="filmstrip">${tiras}</div>
+      <div class="grafico-bloco">
+        <h4>Curva de movimento — crua (cinza) e suavizada (azul)</h4>
+        <canvas id="curvaCanvas" width="640" height="140"></canvas>
+        <p class="grafico-legenda">Curva por zona da bancada ainda não existe — depende do mapa de zonas (pacote 1.1.2), não implementado.</p>
+      </div>
       <div class="row" style="margin-top:12px">
         <button class="act" id="extracaoGravar">Gravar no dossiê</button>
       </div>`;
+
+    desenharGrafico(resultadoEl.querySelector("#curvaCanvas"), curva);
 
     resultadoEl.querySelector("#extracaoGravar").addEventListener("click", () => {
       onGravar({
         taxaAmostragemFps: 2,
         total: frames.length,
         tempos: frames.map((f) => f.tempoSegundos),
+        curvaMovimento: curva,
       });
     });
   }
+}
+
+function desenharGrafico(canvasEl, curva) {
+  const ctx = canvasEl.getContext("2d");
+  const w = canvasEl.width;
+  const h = canvasEl.height;
+  const margem = 8;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+
+  if (curva.length < 2) {
+    ctx.fillStyle = "#565A60";
+    ctx.font = "12px monospace";
+    ctx.fillText("frames insuficientes para desenhar curva", margem, h / 2);
+    return;
+  }
+
+  const valorMax = Math.max(1, ...curva.map((p) => Math.max(p.valorCru, p.valorSuavizado)));
+  const x = (i) => margem + (i / (curva.length - 1)) * (w - margem * 2);
+  const y = (v) => h - margem - (v / valorMax) * (h - margem * 2);
+
+  function linha(chave, cor, largura) {
+    ctx.beginPath();
+    curva.forEach((p, i) => {
+      const px = x(i);
+      const py = y(p[chave]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.strokeStyle = cor;
+    ctx.lineWidth = largura;
+    ctx.stroke();
+  }
+
+  linha("valorCru", "#C6C8C1", 1);
+  linha("valorSuavizado", "#24425F", 2);
 }
