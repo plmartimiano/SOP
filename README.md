@@ -676,54 +676,76 @@ código de verdade, não só ausência de fase.
 Até a fase 05, o projeto inteiro roda 100% no navegador — nenhum servidor,
 nenhuma chave, `python3 -m http.server` basta. A fase 06 precisa mandar
 imagens pra um modelo de visão pago (Gemini), e isso quebra essa regra de
-um jeito que não dá pra evitar: colocar a chave paga direto no JavaScript
-do navegador a exporia a qualquer pessoa com o DevTools aberto. As fases
-13 (geração de imagem) e 14 (verificação cega) têm exatamente o mesmo
-problema, com a mesma solução.
+um jeito que não dá pra evitar: colocar a credencial paga direto no
+JavaScript do navegador a exporia a qualquer pessoa com o DevTools
+aberto. As fases 13 (geração de imagem) e 14 (verificação cega) têm
+exatamente o mesmo problema, com a mesma solução.
 
 A solução adotada é o menor desvio possível dessa regra: três funções
-serverless na Vercel (`api/leitura-semantica.js` para a fase 06,
-`api/gerar-imagem.js` para a fase 13, `api/verificar-imagem.js` para a
-fase 14), não um backend de verdade. As três autenticam do lado do
-servidor — nunca num arquivo do projeto, nunca no navegador — e são as
-únicas peças que saem do "100% client-side". Todo o resto (fases 00 a 05,
-07 a 12, o dossiê, a navegação) continua exatamente como estava.
+(`api/leitura-semantica.js` para a fase 06, `api/gerar-imagem.js` para a
+fase 13, `api/verificar-imagem.js` para a fase 14), servidas por um único
+serviço HTTP (`server.js`), não um backend de verdade. As três autenticam
+do lado do servidor — nunca num arquivo do projeto, nunca no navegador —
+e são as únicas peças que saem do "100% client-side". Todo o resto (fases
+00 a 05, 07 a 12, o dossiê, a navegação) continua exatamente como estava.
 
-**Atualizado em 2026-08-29 (cartão de handoff):** o cliente confirmou que
-usa Gemini via **Vertex AI** (projeto do Google Cloud + conta de serviço,
-`genai.Client(vertexai=True, project=PROJECT_ID, location="global")`), não
-a Gemini Developer API com uma chave simples que as três funções usavam
-até essa data. A troca já foi feita no código — ver `api/_auth-vertex.js`
-para o porquê e o fluxo de autenticação (JWT bearer de conta de serviço,
-sem nenhuma dependência nova, só `crypto` nativo do Node). Não existe mais
-uma `GEMINI_API_KEY` única.
+**Dois cartões de handoff em 2026-08-29 mudaram esta seção inteira:**
 
-**Para rodar isso de verdade:**
-1. Publicar o projeto na Vercel (conectar o repositório, deploy automático
-   a cada push).
-2. Configurar no painel do projeto: `GOOGLE_SERVICE_ACCOUNT_JSON` (o
-   arquivo JSON inteiro da conta de serviço), `GOOGLE_CLOUD_PROJECT` (o
-   `PROJECT_ID` do cliente) e, se precisar, `GOOGLE_CLOUD_LOCATION`
-   (padrão `global`, já confirmado), `GEMINI_MODEL` (fases 06 e 14 — o
-   modelo de visão) e `GEMINI_IMAGE_MODEL` (fase 13 — o modelo de
-   imagem) — ver `.env.example` para o que cada uma faz. **O nome exato
-   dos dois modelos no projeto Vertex AI do cliente não foi confirmado**:
-   confirme os dois no console do Vertex AI / Model Garden antes de
-   configurar em produção. O modelo de imagem padrão embutido no código
-   (`gemini-2.5-flash-image`) também tem desligamento anunciado para
-   02/10/2026 — se essa data já passou, confirme o sucessor antes de
-   seguir.
+1. **Autenticação:** o cliente confirmado usa Gemini via **Vertex AI**
+   (projeto do Google Cloud + conta de serviço), não a Gemini Developer
+   API com uma chave simples que as três funções usavam antes. Não existe
+   mais uma `GEMINI_API_KEY` única — ver `api/_auth-vertex.js` para os
+   dois caminhos de autenticação suportados hoje (ADC via metadata server
+   quando roda no Google Cloud, chave de conta de serviço como
+   alternativa portável).
+2. **Hospedagem:** o cliente roda outras ferramentas dele dentro do
+   próprio Google Cloud (o mesmo `google.auth.default()` que dá pra ADC
+   automático no ponto 1 acima), então o projeto migrou de Vercel para um
+   serviço no **Cloud Run** — ver `server.js` e `Dockerfile` na raiz. Não
+   existe mais `vercel.json` nem dependência da CLI da Vercel.
+
+**Para rodar isso de verdade (Cloud Run):**
+1. Publicar o projeto no Cloud Run (com a CLI `gcloud` instalada e
+   autenticada no projeto do cliente):
+   ```
+   gcloud run deploy sop-video --source . --project SEU_PROJECT_ID \
+     --region SEU_REGION --allow-unauthenticated
+   ```
+   `--source .` usa o `Dockerfile` da raiz — não precisa de Cloud Build
+   configurado à parte. Escolha `--region` livremente (é a região do
+   *serviço*, independente da `GOOGLE_CLOUD_LOCATION` do Vertex AI
+   abaixo, que o cliente confirmou como `global`).
+2. Anexar ao serviço uma conta de serviço com permissão de chamar o
+   Vertex AI (papel `roles/aiplatform.user` no mínimo) — com isso,
+   `api/_auth-vertex.js` consegue o token sozinho via ADC, **sem
+   precisar configurar nenhuma credencial como variável de ambiente**.
+   Configure só `GOOGLE_CLOUD_PROJECT` (obrigatória) e, se precisar,
+   `GOOGLE_CLOUD_LOCATION` (padrão `global`, já confirmado com o
+   cliente), `GEMINI_MODEL` (fases 06 e 14 — o modelo de visão) e
+   `GEMINI_IMAGE_MODEL` (fase 13 — o modelo de imagem) — ver
+   `.env.example`. **O nome exato dos dois modelos no projeto Vertex AI
+   do cliente não foi confirmado**: confirme os dois no console do
+   Vertex AI / Model Garden antes de configurar em produção. O modelo de
+   imagem padrão embutido no código (`gemini-2.5-flash-image`) também tem
+   desligamento anunciado para 02/10/2026 — se essa data já passou,
+   confirme o sucessor antes de seguir.
+   - Alternativa (fora do Google Cloud, ou sem poder anexar uma conta de
+     serviço ao serviço do Cloud Run): configurar
+     `GOOGLE_SERVICE_ACCOUNT_JSON` também funciona — `_auth-vertex.js`
+     tenta o ADC primeiro e cai pra essa variável automaticamente se o
+     metadata server não responder.
 3. Para testar as fases 06, 13 ou 14 localmente com as funções de
-   verdade, é preciso `vercel dev` (que precisa da CLI da Vercel e login)
-   em vez do `python3 -m http.server` simples — as demais fases
-   continuam funcionando com o servidor simples, só essas três dependem
-   de função.
+   verdade, roda `node server.js` (zero dependências, nenhum `npm
+   install` necessário) — sobe estático + as três rotas juntos em
+   `http://localhost:8080`. O `python3 -m http.server` simples ainda
+   funciona pras fases 00 a 05, 07 a 12 e 15 (que não dependem de
+   nenhuma função), mas não serve as três rotas de `/api/`.
 
-Depois de configuradas, rodam sozinhas: a credencial nunca precisa ser
-digitada por ninguém a cada uso, não tem processo pra manter de pé (a
-Vercel escala as funções sozinha a cada chamada; o token de acesso OAuth2
-é obtido e renovado automaticamente por `api/_auth-vertex.js`, com cache
-em memória entre invocações "quentes" da função).
+Depois de configurado, roda sozinho: a credencial nunca precisa ser
+digitada por ninguém a cada uso, não tem processo pra manter de pé (o
+Cloud Run escala o serviço sozinho a cada chamada; o token de acesso
+OAuth2 é obtido e renovado automaticamente por `api/_auth-vertex.js`, com
+cache em memória entre invocações "quentes" da instância).
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -758,10 +780,19 @@ python3 -m http.server 8000
 (Precisa de servidor local, não `file://`, porque a página busca
 `fixtures/dossie-exemplo.json` via `fetch`.)
 
-A fase 06 (leitura semântica) é a exceção — depende da função em `api/`,
-que o `http.server` simples não serve. Ver "Onde o navegador para de
-bastar" abaixo para rodar essa fase específica (precisa de `vercel dev`
-ou de um deploy de verdade na Vercel).
+As fases 06, 13 e 14 são a exceção — dependem das funções em `api/`, que
+o `http.server` simples não serve. Pra essas três, roda o servidor do
+próprio projeto em vez do `http.server`:
+
+```
+node server.js
+# depois abra http://localhost:8080/index.html
+```
+
+Zero dependências (nenhum `npm install`) — serve estático e as três rotas
+de `/api/` juntos. Ver "Onde o navegador para de bastar" abaixo para
+como configurar a autenticação com o Vertex AI antes de as três fases
+funcionarem de verdade (localmente ou publicadas no Cloud Run).
 
 Para rodar os testes (Node 18+):
 
@@ -1324,6 +1355,19 @@ registrado como lacuna conhecida, não escondida.
   do controle de versão, porque expõe credencial no navegador de
   propósito) pra validar isso manualmente antes de configurar em
   produção.
+  **Segundo cartão de handoff no mesmo dia:** a hospedagem migrou de
+  Vercel para Cloud Run (`server.js` + `Dockerfile`, ver "Onde o
+  navegador para de bastar" acima) — `api/_auth-vertex.js` ganhou um
+  segundo caminho de autenticação (ADC via metadata server, preferido
+  quando roda no Google Cloud; a chave de conta de serviço virou
+  fallback). `tests/auth-vertex.test.mjs` cobre os dois caminhos
+  (10 testes) e `tests/server.test.mjs` cobre o roteamento do servidor
+  (estático, as três rotas de API, proteção contra path traversal) — mas
+  nenhum dos dois testa uma implantação real no Cloud Run, nem o
+  Dockerfile foi construído de verdade (sem daemon Docker disponível
+  neste ambiente). Antes de considerar isto pronto: `docker build` local
+  pra confirmar a imagem sobe, e um `gcloud run deploy` de teste contra
+  um projeto Vertex AI de verdade.
 - 1.4.4 (parte descartada, não pendente) — estabilidade de ordem (F07-04).
   Diferente das outras lacunas desta lista, esta não é "ainda não
   construída" — é uma limitação estrutural documentada em

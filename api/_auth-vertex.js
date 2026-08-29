@@ -2,23 +2,45 @@
 // 2026-08-29: o cliente já usa Gemini via Vertex AI — projeto do Google
 // Cloud + conta de serviço — não a Gemini Developer API com chave simples
 // que as três funções deste diretório usavam até aqui). Substitui o
-// `?key=GEMINI_API_KEY` na URL por um token de acesso OAuth2, obtido pelo
-// fluxo de "JWT bearer" de conta de serviço (RFC 7523 / documentação da
-// Google "Using OAuth 2.0 for Server to Server Applications") — só com
+// `?key=GEMINI_API_KEY` na URL por um token de acesso OAuth2 — só com
 // módulos nativos do Node (`crypto`), sem nenhuma dependência nova, pela
 // mesma razão de sempre neste projeto: sem build, sem node_modules a
 // versionar ou instalar.
 //
+// ATUALIZADO (segundo cartão de handoff, mesmo dia): o projeto migrou de
+// hospedagem na Vercel para um serviço no Cloud Run (ver server.js e
+// Dockerfile na raiz) — o que muda a credencial disponível. Dois
+// caminhos, nesta ordem de preferência:
+//
+// 1. ADC via metadata server do Cloud Run/Compute Engine — o MESMO
+//    mecanismo que `google.auth.default()` usa nos scripts Python do
+//    cliente (ver cartão de handoff): o serviço do Cloud Run tem uma
+//    conta de serviço anexada, e o token de acesso vem de uma chamada
+//    HTTP simples pro metadata server, sem nenhuma chave em lugar
+//    nenhum — nem em variável de ambiente, nem em arquivo. É o caminho
+//    padrão, mais seguro (nenhum segredo de longa duração pra vazar) e o
+//    que bate com o que o cliente já faz em outras ferramentas dele.
+// 2. Fallback pra JWT bearer de conta de serviço (RFC 7523 /
+//    documentação da Google "Using OAuth 2.0 for Server to Server
+//    Applications"), lendo `GOOGLE_SERVICE_ACCOUNT_JSON` — mantido por
+//    portabilidade (funciona em qualquer host, não só Google Cloud; é o
+//    que a Vercel precisava quando o projeto rodava lá, e continua
+//    disponível se o deploy voltar pra fora do Google Cloud algum dia).
+//
 // Alternativa descartada: a biblioteca oficial `google-auth-library` faz
-// a mesma coisa com menos código aqui, mas adiciona a primeira dependência
-// externa do projeto — trocaria um arquivo pequeno e auditável por uma
-// árvore de node_modules. Como o fluxo de JWT bearer é padrão OAuth2
-// estável (não é API específica do Gemini, não deve mudar), escrevê-lo à
-// mão é o menor desvio da regra de "zero dependência" do projeto.
+// os dois caminhos com menos código aqui, mas adiciona a primeira
+// dependência externa do projeto — trocaria dois arquivos pequenos e
+// auditáveis por uma árvore de node_modules. Como os dois fluxos são
+// padrão OAuth2/GCP estável (não é API específica do Gemini, não deve
+// mudar), escrevê-los à mão é o menor desvio da regra de "zero
+// dependência" do projeto.
 
 const crypto = require("crypto");
 
-let tokenCache = null; // { accessToken, expiraEm } — reaproveitado entre invocações "quentes" da função na Vercel
+const METADATA_TOKEN_URL =
+  "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+
+let tokenCache = null; // { accessToken, expiraEm } — reaproveitado entre invocações "quentes" da instância do Cloud Run
 
 function base64url(entrada) {
   const buffer = Buffer.isBuffer(entrada) ? entrada : Buffer.from(entrada);
@@ -50,16 +72,36 @@ function lerCredenciais() {
   return credenciais;
 }
 
-// Pede (ou reusa, se ainda válido) um token de acesso OAuth2 pro escopo
-// "cloud-platform" — o único escopo que as chamadas de generateContent do
-// Vertex AI precisam. Token expira em ~1h (dados.expires_in do Google);
-// a margem de 60s evita usar um token que expira no meio da chamada.
-async function obterTokenDeAcesso() {
-  const agora = Math.floor(Date.now() / 1000);
-  if (tokenCache && tokenCache.expiraEm > agora + 60) {
-    return tokenCache.accessToken;
+// Caminho 1 (preferido): pede o token direto pro metadata server da
+// instância do Cloud Run — só funciona quando o processo está rodando
+// dentro do Google Cloud (o metadata.google.internal só resolve lá
+// dentro). Fora do Google Cloud, essa chamada falha rápido (erro de DNS
+// ou timeout) e obterTokenDeAcesso cai pro caminho 2 automaticamente.
+async function tentarTokenViaMetadataServer() {
+  const controle = new AbortController();
+  const tempoLimite = setTimeout(() => controle.abort(), 2000);
+  try {
+    const resposta = await fetch(METADATA_TOKEN_URL, {
+      headers: { "Metadata-Flavor": "Google" },
+      signal: controle.signal,
+    });
+    if (!resposta.ok) return null;
+    const dados = await resposta.json();
+    if (!dados.access_token) return null;
+    return { accessToken: dados.access_token, expiresIn: dados.expires_in };
+  } catch {
+    return null; // sem metadata server disponível (fora do Google Cloud) — segue pro caminho 2
+  } finally {
+    clearTimeout(tempoLimite);
   }
+}
 
+// Caminho 2 (fallback): JWT bearer de conta de serviço — ver cabeçalho
+// do arquivo. Só é tentado se GOOGLE_SERVICE_ACCOUNT_JSON estiver
+// configurada; senão obterTokenDeAcesso explica que nenhum dos dois
+// caminhos está disponível.
+async function obterTokenViaContaDeServico() {
+  const agora = Math.floor(Date.now() / 1000);
   const { client_email, private_key } = lerCredenciais();
   const cabecalho = { alg: "RS256", typ: "JWT" };
   const reivindicacoes = {
@@ -88,7 +130,31 @@ async function obterTokenDeAcesso() {
   }
 
   const dadosToken = await respostaToken.json();
-  tokenCache = { accessToken: dadosToken.access_token, expiraEm: agora + (dadosToken.expires_in || 3600) };
+  return { accessToken: dadosToken.access_token, expiresIn: dadosToken.expires_in };
+}
+
+// Pede (ou reusa, se ainda válido) um token de acesso OAuth2 pro escopo
+// "cloud-platform" — o único escopo que as chamadas de generateContent do
+// Vertex AI precisam. Token expira em ~1h (expires_in do Google); a
+// margem de 60s evita usar um token que expira no meio da chamada.
+async function obterTokenDeAcesso() {
+  const agora = Math.floor(Date.now() / 1000);
+  if (tokenCache && tokenCache.expiraEm > agora + 60) {
+    return tokenCache.accessToken;
+  }
+
+  let resultado = await tentarTokenViaMetadataServer();
+  if (!resultado) {
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      throw new Error(
+        "Não consegui um token de acesso: nem o metadata server do Google Cloud respondeu (normal fora do " +
+          "Cloud Run/Compute Engine) nem GOOGLE_SERVICE_ACCOUNT_JSON está configurada como alternativa."
+      );
+    }
+    resultado = await obterTokenViaContaDeServico();
+  }
+
+  tokenCache = { accessToken: resultado.accessToken, expiraEm: agora + (resultado.expiresIn || 3600) };
   return tokenCache.accessToken;
 }
 
@@ -113,4 +179,11 @@ function lerProjetoELocation() {
   return { projeto, location };
 }
 
-module.exports = { obterTokenDeAcesso, montarUrlVertex, lerProjetoELocation };
+// Só para os testes (tests/auth-vertex.test.mjs) isolarem cada caso sem
+// depender da ordem em que rodam — nunca chamado pelos handlers de
+// produção em api/*.js.
+function _resetCacheParaTestes() {
+  tokenCache = null;
+}
+
+module.exports = { obterTokenDeAcesso, montarUrlVertex, lerProjetoELocation, _resetCacheParaTestes };

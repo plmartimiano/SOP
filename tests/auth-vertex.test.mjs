@@ -1,9 +1,23 @@
-import { test } from "node:test";
+import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 
 // api/_auth-vertex.js é CommonJS — Node ESM importa via interop.
-import { obterTokenDeAcesso, montarUrlVertex, lerProjetoELocation } from "../api/_auth-vertex.js";
+import { obterTokenDeAcesso, montarUrlVertex, lerProjetoELocation, _resetCacheParaTestes } from "../api/_auth-vertex.js";
+
+beforeEach(() => _resetCacheParaTestes());
+
+const URL_METADATA = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+const URL_OAUTH_TOKEN = "https://oauth2.googleapis.com/token";
+
+// Simula "não estou rodando no Google Cloud" — a mesma coisa que acontece
+// de verdade fora do Cloud Run/Compute Engine (o host não resolve).
+function fetchSemMetadataServer(handlerOAuth) {
+  return async (url, opts) => {
+    if (url === URL_METADATA) throw new Error("getaddrinfo ENOTFOUND metadata.google.internal");
+    return handlerOAuth(url, opts);
+  };
+}
 
 test("montarUrlVertex com location 'global' não leva prefixo de região no host", () => {
   const url = montarUrlVertex({ projeto: "meu-projeto", location: "global", modelo: "gemini-2.5-flash" });
@@ -41,37 +55,75 @@ test("lerProjetoELocation usa 'global' como padrão quando GOOGLE_CLOUD_LOCATION
   }
 });
 
-test("obterTokenDeAcesso rejeita quando GOOGLE_SERVICE_ACCOUNT_JSON não está configurada", async () => {
-  const original = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+test("obterTokenDeAcesso: quando o metadata server responde (simulando rodar no Cloud Run), usa ADC e nem olha GOOGLE_SERVICE_ACCOUNT_JSON", async () => {
+  const originalEnv = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON; // prova que o caminho 1 não depende disso
+
+  const originalFetch = globalThis.fetch;
+  let chamadasMetadata = 0;
+  globalThis.fetch = async (url, opts) => {
+    assert.equal(url, URL_METADATA);
+    assert.equal(opts.headers["Metadata-Flavor"], "Google");
+    chamadasMetadata += 1;
+    return { ok: true, json: async () => ({ access_token: "token-via-adc-456", expires_in: 3600, token_type: "Bearer" }) };
+  };
+
   try {
-    await assert.rejects(() => obterTokenDeAcesso(), /GOOGLE_SERVICE_ACCOUNT_JSON não configurada/);
+    const token = await obterTokenDeAcesso();
+    assert.equal(token, "token-via-adc-456");
+    assert.equal(chamadasMetadata, 1);
   } finally {
-    if (original !== undefined) process.env.GOOGLE_SERVICE_ACCOUNT_JSON = original;
+    globalThis.fetch = originalFetch;
+    if (originalEnv !== undefined) process.env.GOOGLE_SERVICE_ACCOUNT_JSON = originalEnv;
   }
 });
 
-test("obterTokenDeAcesso rejeita JSON inválido com mensagem explicando o motivo (não trava)", async () => {
-  const original = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+test("obterTokenDeAcesso: sem metadata server e sem GOOGLE_SERVICE_ACCOUNT_JSON, explica os dois motivos", async () => {
+  const originalEnv = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchSemMetadataServer(async () => {
+    throw new Error("não deveria chamar o endpoint OAuth sem credencial nenhuma configurada");
+  });
+  try {
+    await assert.rejects(() => obterTokenDeAcesso(), /nem o metadata server.*nem GOOGLE_SERVICE_ACCOUNT_JSON/s);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalEnv !== undefined) process.env.GOOGLE_SERVICE_ACCOUNT_JSON = originalEnv;
+  }
+});
+
+test("obterTokenDeAcesso: sem metadata server, cai pro fallback e rejeita JSON inválido com o motivo (não trava)", async () => {
+  const originalEnv = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   process.env.GOOGLE_SERVICE_ACCOUNT_JSON = "{ isso não é json";
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchSemMetadataServer(async () => {
+    throw new Error("não deveria chegar no endpoint OAuth — o JSON já devia ter falhado antes");
+  });
   try {
     await assert.rejects(() => obterTokenDeAcesso(), /não é um JSON válido/);
   } finally {
-    if (original !== undefined) process.env.GOOGLE_SERVICE_ACCOUNT_JSON = original; else delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    globalThis.fetch = originalFetch;
+    if (originalEnv !== undefined) process.env.GOOGLE_SERVICE_ACCOUNT_JSON = originalEnv; else delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   }
 });
 
-test("obterTokenDeAcesso rejeita JSON sem client_email/private_key", async () => {
-  const original = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+test("obterTokenDeAcesso: sem metadata server, cai pro fallback e rejeita JSON sem client_email/private_key", async () => {
+  const originalEnv = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({ project_id: "meu-projeto" });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchSemMetadataServer(async () => {
+    throw new Error("não deveria chegar no endpoint OAuth — as credenciais já deviam ter falhado antes");
+  });
   try {
     await assert.rejects(() => obterTokenDeAcesso(), /não parece uma chave de conta de serviço/);
   } finally {
-    if (original !== undefined) process.env.GOOGLE_SERVICE_ACCOUNT_JSON = original; else delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    globalThis.fetch = originalFetch;
+    if (originalEnv !== undefined) process.env.GOOGLE_SERVICE_ACCOUNT_JSON = originalEnv; else delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   }
 });
 
-test("obterTokenDeAcesso explica o erro (sem travar) quando a troca por token falha", async () => {
+test("obterTokenDeAcesso: sem metadata server, explica o erro (sem travar) quando a troca por token falha", async () => {
   const { privateKey } = crypto.generateKeyPairSync("rsa", {
     modulusLength: 2048,
     privateKeyEncoding: { type: "pkcs1", format: "pem" },
@@ -85,7 +137,11 @@ test("obterTokenDeAcesso explica o erro (sem travar) quando a troca por token fa
   });
 
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => ({ ok: false, status: 401, text: async () => "invalid_grant: chave revogada" });
+  globalThis.fetch = fetchSemMetadataServer(async () => ({
+    ok: false,
+    status: 401,
+    text: async () => "invalid_grant: chave revogada",
+  }));
 
   try {
     await assert.rejects(() => obterTokenDeAcesso(), /401.*invalid_grant/s);
@@ -95,10 +151,7 @@ test("obterTokenDeAcesso explica o erro (sem travar) quando a troca por token fa
   }
 });
 
-// A partir daqui, obterTokenDeAcesso passa a ter um token em cache válido
-// por 1h (mockado) — os testes acima de falha precisam rodar ANTES deste,
-// senão o cache mascara a falha simulada de rede.
-test("obterTokenDeAcesso monta um JWT RS256 válido, troca por token e reusa (cache) sem chamar fetch de novo", async () => {
+test("obterTokenDeAcesso: sem metadata server, monta um JWT RS256 válido via conta de serviço, troca por token e reusa (cache) sem chamar fetch de novo", async () => {
   const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
     modulusLength: 2048,
     privateKeyEncoding: { type: "pkcs1", format: "pem" },
@@ -112,11 +165,11 @@ test("obterTokenDeAcesso monta um JWT RS256 válido, troca por token e reusa (ca
   });
 
   const originalFetch = globalThis.fetch;
-  let chamadasFetch = 0;
+  let chamadasOAuth = 0;
   let assertivaCorpo;
-  globalThis.fetch = async (url, opts) => {
-    chamadasFetch += 1;
-    assert.equal(url, "https://oauth2.googleapis.com/token");
+  globalThis.fetch = fetchSemMetadataServer(async (url, opts) => {
+    chamadasOAuth += 1;
+    assert.equal(url, URL_OAUTH_TOKEN);
     const params = new URLSearchParams(opts.body);
     assert.equal(params.get("grant_type"), "urn:ietf:params:oauth:grant-type:jwt-bearer");
     const jwt = params.get("assertion");
@@ -128,7 +181,7 @@ test("obterTokenDeAcesso monta um JWT RS256 válido, troca por token e reusa (ca
     const reivindicacoes = JSON.parse(Buffer.from(corpoB64, "base64url").toString());
     assert.equal(reivindicacoes.iss, "conta-de-teste@meu-projeto.iam.gserviceaccount.com");
     assert.equal(reivindicacoes.scope, "https://www.googleapis.com/auth/cloud-platform");
-    assert.equal(reivindicacoes.aud, "https://oauth2.googleapis.com/token");
+    assert.equal(reivindicacoes.aud, URL_OAUTH_TOKEN);
     assert.ok(reivindicacoes.exp > reivindicacoes.iat);
 
     // confirma que a assinatura é de fato válida contra a chave pública —
@@ -142,22 +195,19 @@ test("obterTokenDeAcesso monta um JWT RS256 válido, troca por token e reusa (ca
     assert.equal(assinaturaValida, true);
     assertivaCorpo = true;
 
-    return {
-      ok: true,
-      json: async () => ({ access_token: "token-de-teste-123", expires_in: 3600 }),
-    };
-  };
+    return { ok: true, json: async () => ({ access_token: "token-de-teste-123", expires_in: 3600 }) };
+  });
 
   try {
     const token = await obterTokenDeAcesso();
     assert.equal(token, "token-de-teste-123");
-    assert.equal(chamadasFetch, 1);
+    assert.equal(chamadasOAuth, 1);
     assert.equal(assertivaCorpo, true);
 
     // segunda chamada dentro da validade não deve bater na rede de novo
     const tokenDeNovo = await obterTokenDeAcesso();
     assert.equal(tokenDeNovo, "token-de-teste-123");
-    assert.equal(chamadasFetch, 1, "token em cache não deveria disparar novo fetch");
+    assert.equal(chamadasOAuth, 1, "token em cache não deveria disparar novo fetch");
   } finally {
     globalThis.fetch = originalFetch;
     if (originalEnv !== undefined) process.env.GOOGLE_SERVICE_ACCOUNT_JSON = originalEnv; else delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
