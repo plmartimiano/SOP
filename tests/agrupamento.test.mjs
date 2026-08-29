@@ -161,6 +161,36 @@ test("proporAlternativas sinaliza quando a fusão cruza causas diferentes (custo
   assert.match(alt.custos[0].motivo, /componente_novo.*troca_ferramenta|troca_ferramenta.*componente_novo/);
 });
 
+test("proporAlternativas marca duvidosa=true só no passo que resultou da fusão de causas diferentes", () => {
+  const nucleo = [
+    entradaNucleo("um", "componente_novo", "P1", null, 1),
+    entradaNucleo("dois", "troca_ferramenta", "P1", "Chave", 1),
+    entradaNucleo("tres", "componente_novo", "P2", null, 1),
+    entradaNucleo("quatro", "componente_novo", "P3", null, 1),
+    entradaNucleo("cinco", "componente_novo", "P4", null, 1),
+    entradaNucleo("seis", "componente_novo", "P5", null, 1),
+    entradaNucleo("sete", "componente_novo", "P6", null, 1),
+  ];
+  const [alt] = proporAlternativas(nucleo, ["mesmo_componente"]);
+  const duvidosos = alt.passos.filter((p) => p.duvidosa);
+  assert.equal(duvidosos.length, 1);
+  assert.equal(duvidosos[0].titulo, "um + dois");
+});
+
+test("proporAlternativas não marca duvidosa quando a fusão não cruza causa nem ferramenta", () => {
+  const nucleo = [
+    entradaNucleo("um", "componente_novo", "P1", null, 1),
+    entradaNucleo("dois", "componente_novo", "P1", null, 1),
+    entradaNucleo("tres", "componente_novo", "P2", null, 1),
+    entradaNucleo("quatro", "componente_novo", "P3", null, 1),
+    entradaNucleo("cinco", "componente_novo", "P4", null, 1),
+    entradaNucleo("seis", "componente_novo", "P5", null, 1),
+    entradaNucleo("sete", "componente_novo", "P6", null, 1),
+  ];
+  const [alt] = proporAlternativas(nucleo, ["mesmo_componente"]);
+  assert.equal(alt.passos.every((p) => !p.duvidosa), true);
+});
+
 test("proporAlternativas com menos de 6 ações não força: totalPassos fica abaixo de 6 e completo é false", () => {
   const nucleo = [entradaNucleo("um", "componente_novo", "P1", null, 1), entradaNucleo("dois", "componente_novo", "P2", null, 1)];
   const [alt] = proporAlternativas(nucleo, ["mesmo_componente"]);

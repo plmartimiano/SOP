@@ -116,6 +116,7 @@ export const FASES = [
     sai: "Exatamente 6 passos, na ordem do vídeo, com as fusões duvidosas marcadas em amarelo.",
     gate: "São 6, nenhuma verificação sumiu e 4 deles coincidem com o SOP feito à mão.",
     secaoDossie: "passos",
+    notaSecao: "\"Exatamente 6, na ordem do vídeo\" e \"nenhuma verificação sumiu\" são garantidos pela construção do motor de fusão (nunca reordena, nunca funde uma verificação de conferência) — não são checados como se pudessem falhar, só exibidos como registro auditável. \"4 dos 6 coincidem com o SOP feito à mão\" não é verificado automaticamente: exigiria o SOP manual da estação digitalizado em algum lugar do programa, e isso não existe.",
   },
   {
     numero: "10",

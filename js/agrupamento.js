@@ -5,9 +5,9 @@
 // já reduziu a "estável" — para as ações que viram passo).
 //
 // O motor de fusão (`fundirAteSeis`) é o mesmo algoritmo que a fase 09
-// (motor de consolidação, ainda não construída) vai usar de verdade — aqui
-// ele só faz a prévia de cada alternativa, pra a pessoa ver o resultado
-// antes de homologar.
+// (motor de consolidação, js/consolidacao.js) usa de verdade — aqui ele só
+// faz a prévia de cada alternativa, pra a pessoa ver o resultado antes de
+// homologar.
 
 // F08-01: componentes distintos que o operador agrega — fronteiras cuja
 // causa envolve pegar peça nova (isolada ou combinada com ferramenta).
@@ -82,8 +82,10 @@ export function gerarRelatorio({ componentes, ferramentas, fronteiras, pausasCon
 // Uma "ação" pronta pra entrar no motor de fusão, derivada de uma entrada
 // do núcleo (fase 07). Pausas de conferência nascem não-fundíveis
 // (F08-04) — nenhum critério de agrupamento pode escondê-las dentro de
-// outro passo.
-function extrairAcaoBase(entrada) {
+// outro passo. Exportada porque a fase 09 (js/consolidacao.js) reusa essa
+// mesma transformação, sem reescrevê-la, pra aplicar de novo a regra já
+// homologada sobre o núcleo atual.
+export function extrairAcaoBase(entrada) {
   const fatia = Object.values(entrada.porCiclo).find(Boolean);
   const duracoes = Object.values(entrada.porCiclo)
     .filter(Boolean)
@@ -99,7 +101,16 @@ function extrairAcaoBase(entrada) {
     objeto: leitura ? leitura.objeto : null,
     duracaoMediaSegundos,
     naoFundivel: causa === "pausa_conferencia",
+    duvidosa: false,
   };
+}
+
+// Uma fusão é "duvidosa" quando combina causas diferentes ou ferramentas
+// diferentes — o mesmo critério que gera um custo em custosDeFusao (F08-07).
+// As duas coisas nascem da mesma verificação de propósito, pra nunca
+// divergir: o texto do custo e a marca visual sempre concordam.
+function ehFusaoDuvidosa(a, b) {
+  return a.causa !== b.causa || (a.ferramenta && b.ferramenta && a.ferramenta !== b.ferramenta);
 }
 
 function fundirGrupos(a, b) {
@@ -110,6 +121,11 @@ function fundirGrupos(a, b) {
     objeto: a.objeto === b.objeto ? a.objeto : null,
     duracaoMediaSegundos: a.duracaoMediaSegundos + b.duracaoMediaSegundos,
     naoFundivel: a.naoFundivel || b.naoFundivel,
+    // Contagiosa como naoFundivel: se QUALQUER fusão na história deste
+    // grupo cruzou causa/ferramenta, o passo final inteiro fica marcado —
+    // a pessoa vendo o passo 3 não precisa adivinhar qual das fusões
+    // encadeadas dentro dele foi a duvidosa.
+    duvidosa: a.duvidosa || b.duvidosa || ehFusaoDuvidosa(a, b),
     origem: [...(a.origem || [a.rotulo]), ...(b.origem || [b.rotulo])],
   };
 }
@@ -138,7 +154,7 @@ export function fundirAteSeis(acoesBase, calcularSimilaridade, maxGrupos = 6) {
 
     const a = grupos[melhorIndice];
     const b = grupos[melhorIndice + 1];
-    if (a.causa !== b.causa || (a.ferramenta && b.ferramenta && a.ferramenta !== b.ferramenta)) {
+    if (ehFusaoDuvidosa(a, b)) {
       custosDeFusao.push({
         rotulo: `${a.rotulo} + ${b.rotulo}`,
         motivo: `combina uma fronteira de "${a.causa}" com uma de "${b.causa}"${a.ferramenta && b.ferramenta && a.ferramenta !== b.ferramenta ? ` (ferramentas diferentes: ${a.ferramenta} e ${b.ferramenta})` : ""}`,
@@ -181,7 +197,7 @@ export function proporAlternativas(nucleo, chavesCriterios = Object.keys(CRITERI
       chave,
       nome: criterio.nome,
       descricao: criterio.descricao,
-      passos: grupos.map((g, i) => ({ numero: i + 1, titulo: g.rotulo, duracaoMediaSegundos: Number(g.duracaoMediaSegundos.toFixed(2)) })),
+      passos: grupos.map((g, i) => ({ numero: i + 1, titulo: g.rotulo, duracaoMediaSegundos: Number(g.duracaoMediaSegundos.toFixed(2)), duvidosa: g.duvidosa })),
       totalPassos: grupos.length,
       completo,
       custos: custosDeFusao,

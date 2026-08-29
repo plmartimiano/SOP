@@ -14,6 +14,7 @@ import { montarFatiamento } from "./fase05-ui.js";
 import { montarLeituraSemantica } from "./fase06-ui.js";
 import { montarConsensoUI } from "./fase07-ui.js";
 import { montarReconhecimento } from "./fase08-ui.js";
+import { montarConsolidacao } from "./fase09-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -27,6 +28,7 @@ const TITULO_FERRAMENTA = {
   "06": "Ler frames-chave",
   "07": "Calcular consenso",
   "08": "Reconhecer a estação",
+  "09": "Consolidar nos 6 passos",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -149,7 +151,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06", "07", "08"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07", "08", "09"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -275,6 +277,21 @@ function renderPainel() {
         adicionarVersao(dossie, "reconhecimento", dadosReconhecimento, { origem: "F08-01/F08-02/F08-03/F08-04/F08-05/F08-06/F08-07/F08-08" });
         renderTudo();
         mostrarStatus(`Regra homologada e gravada no dossiê ("${dadosReconhecimento.regraHomologada.nomeCriterio}").`, "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "09") {
+    const consensoFase07 = obterVersaoComCampo("reconhecimento", "nucleo");
+    const homologacaoFase08 = obterVersaoComCampo("reconhecimento", "regraHomologada");
+    montarConsolidacao(document.getElementById("faseFerramenta"), {
+      nucleo: consensoFase07 ? consensoFase07.dados.nucleo : null,
+      regraHomologada: homologacaoFase08 ? homologacaoFase08.dados.regraHomologada : null,
+      onGravar: (dadosConsolidacao) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "passos", dadosConsolidacao, { origem: "1.5.4 (motor de consolidação, aplica F09-02 já homologado)" });
+        renderTudo();
+        mostrarStatus(`Consolidado em ${dadosConsolidacao.passos.length} passos e gravado no dossiê.`, "ok");
       },
     });
   }

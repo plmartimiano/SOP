@@ -148,6 +148,8 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 .alternativa-cabecalho input[type=radio]{margin-top:3px;flex:0 0 auto}
 .alternativa-passos{margin:10px 0 0;padding-left:20px;font-size:13px}
 .alternativa-passos li{margin-bottom:5px}
+.passo-duvidoso{background:rgba(232,176,4,.16);border-left:3px solid var(--hazard);padding:2px 6px 2px 8px;margin-left:-9px}
+.tag-duvidosa{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);background:var(--hazard);padding:1px 5px;margin-left:6px;border-radius:2px}
 
 .mapa-instrucao{font-size:13.5px;color:var(--ink-soft);margin:10px 0 8px}
 #mapaCanvas{border:1px solid var(--line);background:#fff;cursor:crosshair;max-width:100%;display:block}
