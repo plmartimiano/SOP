@@ -727,6 +727,35 @@ dossiê exatamente no mesmo formato (`onGravar(dadosImagens, mapaImagens)`
 idêntico) — as fases 14 e 15 não sabem, e não precisam saber, se uma
 imagem veio da API ou de um upload manual.
 
+**Quinto cartão de handoff, mesmo dia — estende o modo manual pras fases
+06 e 14:** o cliente pediu pra testar sem gastar em NENHUMA API paga por
+enquanto, nem Claude nem Gemini. `js/fase06-ui.js` e `js/fase14-ui.js`
+ganharam o mesmo alternador manual/automático da fase 13:
+- **Fase 06**: cada fatia mostra o trio de frames (antes/chave/depois),
+  o prompt (com botão de copiar) e um campo pra colar a resposta de um
+  chat de graça (claude.ai, Gemini) — valida na hora com a mesma regra
+  de sempre (verbo/objeto fora do vocabulário fechado vira
+  `indeterminado`, nunca dado inventado).
+- **Fase 14**: mesma lógica nas três checagens (nota, ordem embaralhada,
+  continuidade) — a única diferença é que `embaralharComRotulos` e
+  `avaliarOrdemSugerida` (o embaralhamento e a nota do gate F14) são
+  reusados de verdade de `js/verificacao-cega.js`, não duplicados, porque
+  já eram funções puras exportadas em ESM.
+- Novo `js/manual-ia.js`: as duas peças que os três modos manuais (06,
+  13, 14) têm em comum — copiar pro clipboard, e ler o JSON que a pessoa
+  colou de volta (tolerante a cerca de código, a texto em volta do JSON,
+  a resposta vazia — nunca lança, só devolve `null` pra quem chama
+  decidir o que fazer). Com teste unitário (`tests/manual-ia.test.mjs`).
+
+As funções de prompt e de validação de cada fase (`montarPrompt*`,
+`sanitizar*`) são cópias das mesmas funções em `api/_leitura-semantica-core.js`
+e `api/_verificar-imagem-core.js` — o core do servidor é CommonJS, não dá
+pra importar direto num módulo ES do navegador sem um bundler (mesma
+solução já usada nos arquivos `teste-claude.html`/`teste-gemini.html`
+entregues à parte). Risco documentado, não escondido: se o prompt do
+servidor mudar, as cópias do modo manual precisam mudar junto — nenhum
+teste automatizado garante essa sincronia hoje.
+
 **Para rodar isso de verdade (Cloud Run):**
 1. Publicar o projeto no Cloud Run (com a CLI `gcloud` instalada e
    autenticada no projeto do cliente):
@@ -1416,6 +1445,24 @@ registrado como lacuna conhecida, não escondida.
   prompt (não inventar objeto fora do glossário, JSON no formato exato,
   etc.) e que o custo por chamada (imagens de vídeo, várias fatias por
   vídeo) é aceitável na prática, com uma chave real e vídeo de exemplo.
+  **Quarto e quinto cartões de handoff no mesmo dia:** o cliente pediu
+  pra testar sem gastar em nenhuma API paga por enquanto — as fases 06,
+  13 e 14 ganharam um modo manual (copiar prompt, colar num chat de
+  graça, colar a resposta de volta), padrão hoje, com o modo automático
+  ainda disponível ao lado sem nenhuma mudança de lógica (ver "Onde o
+  navegador para de bastar"). Isso não substitui a validação desta
+  lista — só adia quando ela precisa acontecer, porque agora dá pra usar
+  o app inteiro sem nenhuma chave configurada. Duas lacunas novas, só do
+  modo manual: (1) `montarPrompt*`/`sanitizar*` em `js/fase06-ui.js` e
+  `js/fase14-ui.js` são cópias das mesmas funções do core do servidor,
+  sem nenhum teste garantindo que ficam em sincronia — um teste dedicado
+  comparando as duas versões (ou extrair pra um módulo compartilhado de
+  verdade) é trabalho futuro; (2) validado só com dados sintéticos
+  (`page.evaluate` chamando os módulos direto, contornando a extração de
+  frames de vídeo de verdade — a fase 06 nunca foi exercitada com o
+  fixture do dossiê de exemplo porque ele não guarda frames extraídos
+  entre sessões, e a fase 09/10 do fixture está no formato antigo
+  documentado abaixo, então nem chega a desbloquear a fase 14).
 - 1.4.4 (parte descartada, não pendente) — estabilidade de ordem (F07-04).
   Diferente das outras lacunas desta lista, esta não é "ainda não
   construída" — é uma limitação estrutural documentada em
