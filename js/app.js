@@ -13,6 +13,7 @@ import { montarDeteccaoCiclos } from "./fase04-ui.js";
 import { montarFatiamento } from "./fase05-ui.js";
 import { montarLeituraSemantica } from "./fase06-ui.js";
 import { montarConsensoUI } from "./fase07-ui.js";
+import { montarReconhecimento } from "./fase08-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -25,6 +26,7 @@ const TITULO_FERRAMENTA = {
   "05": "Fatiar em micro-ações",
   "06": "Ler frames-chave",
   "07": "Calcular consenso",
+  "08": "Reconhecer a estação",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -52,6 +54,20 @@ function mostrarStatus(mensagem, tipo, detalhes = []) {
 function limparStatus() {
   statusEl.className = "status";
   statusEl.innerHTML = "";
+}
+
+// Algumas fases compartilham seção (07 e 08 gravam as duas em
+// "reconhecimento", com formatos diferentes). obterVersaoAtual pegaria a
+// versão mais recente da seção, que pode ser da OUTRA fase — isso busca,
+// de trás pra frente, a última versão que tem o campo que marca "isto é da
+// fase que eu quero" (ver campoDistintivo em fases.js).
+function obterVersaoComCampo(secao, campo) {
+  if (!dossie) return null;
+  const historico = obterHistorico(dossie, secao);
+  for (let i = historico.length - 1; i >= 0; i--) {
+    if (historico[i].dados[campo] !== undefined) return historico[i];
+  }
+  return null;
 }
 
 // Uma fase "rodou" quando a seção do dossiê que ela alimenta tem pelo menos
@@ -101,9 +117,9 @@ function renderEstadoDaFase(fase) {
     return `<div class="vaziomsg">Nenhum dossiê carregado — crie um novo ou carregue o exemplo acima.</div>`;
   }
 
-  const atual = obterVersaoAtual(dossie, fase.secaoDossie);
+  const atual = fase.campoDistintivo ? obterVersaoComCampo(fase.secaoDossie, fase.campoDistintivo) : obterVersaoAtual(dossie, fase.secaoDossie);
   if (!atual) {
-    return `<div class="vaziomsg">Esta fase ainda não rodou (seção "${fase.secaoDossie}" sem versões).</div>`;
+    return `<div class="vaziomsg">Esta fase ainda não rodou (seção "${fase.secaoDossie}" sem versões${fase.campoDistintivo ? ` com o campo "${fase.campoDistintivo}"` : ""}).</div>`;
   }
 
   const historico = obterHistorico(dossie, fase.secaoDossie);
@@ -133,7 +149,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06", "07"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07", "08"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -241,6 +257,24 @@ function renderPainel() {
         adicionarVersao(dossie, "reconhecimento", dadosReconhecimento, { origem: "F07-01/F07-02/F07-03/F07-05" });
         renderTudo();
         mostrarStatus(`Consenso gravado no dossiê (${dadosReconhecimento.nucleo.length} no núcleo, ${dadosReconhecimento.excecoes.length} em exceção).`, "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "08") {
+    const consensoFase07 = obterVersaoComCampo("reconhecimento", "nucleo");
+    const microAcoesAtual = dossie ? obterVersaoAtual(dossie, "microAcoes") : null;
+    const ciclosAtual = dossie ? obterVersaoAtual(dossie, "ciclos") : null;
+    montarReconhecimento(document.getElementById("faseFerramenta"), {
+      reconhecimentoRodouNoDossie: consensoFase07 !== null,
+      porCiclo: microAcoesAtual ? microAcoesAtual.dados.porCiclo : [],
+      nucleo: consensoFase07 ? consensoFase07.dados.nucleo : [],
+      listaCiclos: ciclosAtual ? ciclosAtual.dados.lista : [],
+      onGravar: (dadosReconhecimento) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "reconhecimento", dadosReconhecimento, { origem: "F08-01/F08-02/F08-03/F08-04/F08-05/F08-06/F08-07/F08-08" });
+        renderTudo();
+        mostrarStatus(`Regra homologada e gravada no dossiê ("${dadosReconhecimento.regraHomologada.nomeCriterio}").`, "ok");
       },
     });
   }

@@ -91,7 +91,8 @@ export const FASES = [
     sai: "O núcleo do procedimento — o que se repetiu em 80% dos ciclos — separado das variações.",
     gate: "Toda divergência entre ciclos está listada, nenhuma foi descartada em silêncio.",
     secaoDossie: "reconhecimento",
-    notaSecao: "O núcleo do procedimento alimenta o relatório de reconhecimento da fase 08 — por ora as duas fases compartilham a mesma seção.",
+    campoDistintivo: "nucleo",
+    notaSecao: "O núcleo do procedimento alimenta o relatório de reconhecimento da fase 08 — as duas fases compartilham a mesma seção, mas gravam formatos diferentes. Por isso \"estado no dossiê\" aqui mostra a última versão com o campo \"nucleo\" (desta fase), não necessariamente a versão mais recente da seção.",
   },
   {
     numero: "08",
@@ -103,6 +104,8 @@ export const FASES = [
     decide: "Qual regra de agrupamento vale para a linha. Assinada e gravada.",
     gate: "Os números batem com a contagem manual e existe uma regra homologada.",
     secaoDossie: "reconhecimento",
+    campoDistintivo: "regraHomologada",
+    notaSecao: "A regra homologada aqui vale só para este dossiê — ainda não vira padrão automático das próximas estações (F08-09) nem é reaberta sozinha quando não serve numa estação atípica (F08-10); os dois dependem de uma biblioteca de estações reusável (pacote 1.8.4) que ainda não existe. \"Estado no dossiê\" mostra a última versão com o campo \"regraHomologada\" (desta fase), não a versão mais recente da seção.",
   },
   {
     numero: "09",

@@ -142,6 +142,13 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 .fatia-info{font-size:13px}
 .fatia-causa{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:.04em;color:var(--steel);text-transform:uppercase}
 
+.alternativas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
+.alternativa-card{border:1px solid var(--line);background:#fff;padding:12px}
+.alternativa-cabecalho{display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:13.5px}
+.alternativa-cabecalho input[type=radio]{margin-top:3px;flex:0 0 auto}
+.alternativa-passos{margin:10px 0 0;padding-left:20px;font-size:13px}
+.alternativa-passos li{margin-bottom:5px}
+
 .mapa-instrucao{font-size:13.5px;color:var(--ink-soft);margin:10px 0 8px}
 #mapaCanvas{border:1px solid var(--line);background:#fff;cursor:crosshair;max-width:100%;display:block}
 .mapa-form{margin-top:10px;border:1px solid var(--line);background:#FFFDF4;padding:10px 12px}

@@ -15,12 +15,15 @@ dossiê), **1.2.3** (exportar/importar), **1.2.4** (interface por etapa),
 (extração de frames), **1.3.4** (curva de movimento, geral **e** por zona),
 **1.3.5** (detecção de ciclos — ver ressalva sobre a revisão visual
 arrastável), **1.3.6** (fatiamento em micro-ações), **1.4.1 + 1.4.2 +
-1.4.3** (leitura semântica) e **1.4.4 + 1.4.5** (consenso entre ciclos —
-ver ressalva sobre a estabilidade de ordem) da EAP. Com isso, o bloco C do
+1.4.3** (leitura semântica), **1.4.4 + 1.4.5** (consenso entre ciclos —
+ver ressalva sobre a estabilidade de ordem) e **1.5.1 + 1.5.2 + 1.5.3**
+(reconhecimento da estação — inventário, relatório e alternativas de
+agrupamento, com homologação humana) da EAP. Com isso, o bloco C do
 organograma (a parte "grátis" do pipeline) está completo, a primeira
 chamada paga do projeto (bloco D, fase 06) já existe — com uma ressalva de
-arquitetura importante, ver "Onde o navegador para de bastar" — e o bloco D
-inteiro (fases 06 e 07) está fechado.
+arquitetura importante, ver "Onde o navegador para de bastar" — o bloco D
+inteiro (fases 06 e 07) está fechado, e a fase 08 (a primeira do bloco E,
+a que pede homologação humana de verdade) também.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -233,6 +236,71 @@ inteiro (fases 06 e 07) está fechado.
   sequências idênticas e com lacuna, escolha da referência pelo ciclo com
   mais ações, cálculo de frequência, corte de 80%, escolha do ciclo
   exemplar, e a exclusão de ciclos suspeitos do consenso.
+- `js/agrupamento.js` — reconhecimento da estação (F08-01 a F08-07): a
+  partir de `microAcoes.porCiclo` (todas as fronteiras, todos os ciclos)
+  conta componentes e ferramentas distintos por nome (F08-01, F08-02); a
+  partir do núcleo já calculado pela fase 07 (só o que é estável) conta
+  ações estáveis e verificações — fronteiras de causa `pausa_conferencia`
+  (F08-03, F08-04) — e monta a frase do relatório com plural/singular
+  corretos (F08-05). O motor de fusão (`fundirAteSeis`) funde os vizinhos
+  mais parecidos, segundo um critério escolhível, até sobrarem 6 grupos —
+  nunca funde uma ação marcada não-fundível (verificação de conferência),
+  e se não sobrar par fundível antes de chegar a 6 grupos, para em vez de
+  forçar (`completo: false`, sinalizado na tela em vez de escondido). Três
+  critérios prontos (`ferramenta_compartilhada`, `mesmo_componente`,
+  `equilibrio_tempo`) geram até 3 alternativas de agrupamento (F08-06),
+  cada uma listando os custos das fusões que cruzam causa ou ferramenta
+  diferentes (F08-07 — "o que esta alternativa esconde"). **Nota de
+  desvio do plano**: o critério "por face de montagem" citado no
+  documento original foi substituído por "equilíbrio de tempo" — não há
+  geometria de face de montagem modelada em nenhuma fase anterior, e
+  inventar esse dado seria pior que declarar a troca. **Este mesmo motor
+  de fusão será reusado, sem alteração, pela fase 09** (motor de
+  consolidação, ainda não construída) — aqui ele só gera a prévia de cada
+  alternativa para a pessoa escolher; lá ele vai aplicar de verdade a
+  regra já homologada.
+- `js/fase08-ui.js` — tela da fase 08: exige que a fase 07 já tenha
+  gravado o núcleo do procedimento (senão explica o que falta, sem
+  fingir); com núcleo disponível, mostra o relatório, a grade com as
+  alternativas de agrupamento (cada uma com seus 6 passos e os custos que
+  esconde), e — ao escolher uma — o formulário de homologação (nome,
+  cargo, justificativa opcional). Nome e cargo são obrigatórios: SOP é
+  documento de segurança, a homologação não é anônima (validado antes de
+  gravar). Grava a regra homologada, junto com os números do relatório e
+  as alternativas que foram apresentadas (para auditoria futura), na
+  seção `reconhecimento` — a mesma seção que a fase 07 usa, ver nota
+  abaixo sobre `campoDistintivo`. **F08-09 (a regra virar padrão
+  automático das próximas estações) e F08-10 (detectar quando a regra não
+  serve numa estação atípica) não estão implementados** — os dois
+  dependem de uma biblioteca de estações reusável entre vídeos (pacote
+  1.8.4) que ainda não existe; aqui a homologação vale só para o dossiê
+  atual.
+- `tests/agrupamento.test.mjs` — 11 testes: inventário de componentes e
+  ferramentas (contagem certa, por nome, tempo total somado), contagem de
+  fronteiras estáveis por causa, detecção de pausas de conferência,
+  singular/plural certos no relatório, `fundirAteSeis` não mexendo quando
+  já tem 6 ou menos grupos, nunca fundindo um grupo não-fundível mesmo
+  sendo o mais parecido, cada critério fundindo pelos vizinhos certos
+  (ferramenta compartilhada / equilíbrio de tempo), sinalização de custo
+  quando a fusão cruza causas diferentes, e o caso de menos de 6 ações
+  disponíveis (não força — `totalPassos` fica abaixo de 6, `completo:
+  false`). A primeira tentativa de fixture de teste tinha dois critérios
+  dando resultado idêntico por coincidência de empate — não era bug, era
+  o desempate correto (sempre o par mais à esquerda), mas levou a
+  redesenhar os dados de teste para diferenciar de verdade os critérios.
+- **`campoDistintivo` em `js/fases.js`** — as fases 07 e 08 gravam as duas
+  na seção `reconhecimento`, mas com formatos incompatíveis (07 grava
+  `nucleo`; 08 grava `regraHomologada`). Pegar sempre "a versão mais
+  recente da seção" (o que `obterVersaoAtual` fazia até aqui) devolveria
+  silenciosamente o dado da fase errada assim que as duas tivessem
+  rodado pelo menos uma vez. Corrigido com um campo `campoDistintivo` por
+  fase (o nome do campo que identifica "isto é desta fase") e uma nova
+  função em `js/app.js`, `obterVersaoComCampo(secao, campo)`, que percorre
+  o histórico de trás para frente até achar a última versão que tem
+  aquele campo — usada tanto no "Estado no dossiê" de cada fase quanto na
+  leitura do núcleo pela fase 08. `faseRodou()` (o ponto verde da barra
+  lateral) não precisou mudar — ele só verifica se existe alguma versão
+  na seção, o que continua correto independente do formato.
 
 ## Onde o navegador para de bastar (fase 06 em diante)
 
@@ -470,6 +538,37 @@ botão de gravar). Nenhum erro de página em nenhum dos casos. Essa fase não
 depende de vídeo nem de rede — só do dossiê — então essa validação não tem
 a mesma ressalva de "não testado de verdade" que a fase 06 carrega.
 
+O reconhecimento da estação (1.5.1 + 1.5.2 + 1.5.3) também foi validado de
+duas formas. Primeiro, `js/agrupamento.js` tem 11 testes automatizados com
+fixtures desenhados à mão para diferenciar de verdade os três critérios de
+fusão (ver ressalva acima sobre a primeira tentativa de fixture, que
+empatava dois critérios por coincidência).
+
+Segundo, um encadeamento real no mesmo Chromium, desenhado especificamente
+para exercitar o fix do `campoDistintivo`: montei um dossiê fixture
+(`dossie-teste-fase08.json`) com `ciclos` e `microAcoes` já prontos (5
+ciclos, 1º e 5º suspeitos, os 3 do meio com as mesmas 8 ações — 8 ações a
+100% de núcleo, incluindo uma verificação de conferência não-fundível) mas
+`reconhecimento` vazio de propósito, e carreguei pelo botão normal de
+importar. Isso obrigou o teste a rodar a fase 07 de verdade (clicar
+"Calcular consenso" → "Gravar", gravando a v1 de `reconhecimento` com
+`nucleo`) antes de entrar na fase 08 — em vez de simular esse passo. Com
+o núcleo de 8 ações disponível, a fase 08 mostrou o relatório certo ("4
+componentes, 1 ferramenta, 8 ações estáveis, 1 verificação, ciclo de
+0min10s"), as 3 alternativas, cada uma reduzida a exatamente 6 passos
+(`completo: true`), com a fusão de "posicionar + encaixar + parafusar"
+aparecendo diferente conforme o critério. Selecionar uma alternativa abriu
+o formulário de homologação; tentar assinar sem nome/cargo mostrou o erro
+certo; assinando como "Maria Teste / Engenheira de Processo" gravou a v2
+de `reconhecimento` com `regraHomologada` completo (responsável, cargo,
+critério escolhido, os 6 passos, as 3 alternativas apresentadas para
+auditoria) e acendeu o ponto verde da fase 08. **O teste crítico**: depois
+disso, voltar para a tela da fase 07 e conferir o "Estado no dossiê"
+mostrou que ele continua exibindo a v1 (o `nucleo` da própria fase 07),
+não a v2 (`regraHomologada` da fase 08) — provando que o fix do
+`campoDistintivo` funciona de verdade num navegador real, não só na
+leitura do código. Nenhum erro de página em nenhum dos passos.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - **Validar `api/leitura-semantica.js` contra o Gemini de verdade.** Ainda
@@ -488,9 +587,11 @@ a mesma ressalva de "não testado de verdade" que a fase 06 carrega.
   no mapa de zonas como substituto — funciona, mas é mais pobre que o
   glossário de verdade (sem foto, sem itens que não sejam zona).
 - 1.8.4 — biblioteca de estações (mapa de zonas, glossário, vocabulário de
-  verbos e quadro-mestre reusáveis entre vídeos). Sem isso, glossário e
-  verbos ficam como estão hoje: constante fixa ou substituto via zonas, em
-  vez de recurso próprio da estação.
+  verbos, quadro-mestre e agora também a regra de agrupamento homologada,
+  reusáveis entre vídeos). Sem isso, glossário e verbos ficam como estão
+  hoje: constante fixa ou substituto via zonas, em vez de recurso próprio
+  da estação — e a regra homologada na fase 08 fica presa a um dossiê só
+  (ver F08-09/F08-10 acima).
 - 1.3.5 (parte pendente) — revisão visual dos cortes com correção
   arrastável (F04-06: "uma tira de miniaturas com as linhas de corte, e a
   pessoa arrasta se estiver errado"). A detecção automática existe; falta
@@ -503,7 +604,15 @@ a mesma ressalva de "não testado de verdade" que a fase 06 carrega.
   gasto estimado). Com a fase 06 chamando um modelo pago de verdade agora,
   este pacote deixou de ser abstrato — é o próximo com utilidade real
   imediata.
-- fase 08 (reconhecimento da estação) é o próximo passo natural do
-  pipeline: usa o núcleo do procedimento que o 1.4.5 acabou de calcular
-  para inventariar componentes e ferramentas e propor como agrupar em 6
-  passos — a primeira fase que pede homologação humana de verdade.
+- F08-09 / F08-10 (parte descartada por dependência, não pendente) — a
+  regra homologada virar padrão automático das próximas estações da
+  mesma linha, e detectar quando ela não serve numa estação atípica. Os
+  dois precisam de uma biblioteca de estações reusável entre vídeos
+  (1.8.4, ver abaixo) que ainda não existe — sem isso não há "próxima
+  estação" para aplicar o padrão. Hoje a homologação da fase 08 vale só
+  para o dossiê atual.
+- fase 09 (consolidação nos 6 passos) é o próximo passo natural do
+  pipeline: aplica a regra homologada pela fase 08 — sempre a mesma, sem
+  perguntar de novo — reusando o mesmo motor de fusão de
+  `js/agrupamento.js` que a fase 08 já usa para as prévias, agora de
+  forma definitiva e determinística sobre os 6 passos do procedimento.
