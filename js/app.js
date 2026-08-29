@@ -12,6 +12,7 @@ import { montarExtracao } from "./fase03-ui.js";
 import { montarDeteccaoCiclos } from "./fase04-ui.js";
 import { montarFatiamento } from "./fase05-ui.js";
 import { montarLeituraSemantica } from "./fase06-ui.js";
+import { montarConsensoUI } from "./fase07-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -23,6 +24,7 @@ const TITULO_FERRAMENTA = {
   "04": "Detectar ciclos",
   "05": "Fatiar em micro-ações",
   "06": "Ler frames-chave",
+  "07": "Calcular consenso",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -131,7 +133,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -222,6 +224,23 @@ function renderPainel() {
         adicionarVersao(dossie, "microAcoes", dadosMicroAcoes, { origem: "F06-01/F06-02/F06-03/F06-04/F06-05" });
         renderTudo();
         mostrarStatus("Leitura semântica gravada no dossiê (nova versão de \"microAcoes\").", "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "07") {
+    const ciclosAtual = dossie ? obterVersaoAtual(dossie, "ciclos") : null;
+    const microAcoesAtual = dossie ? obterVersaoAtual(dossie, "microAcoes") : null;
+    montarConsensoUI(document.getElementById("faseFerramenta"), {
+      ciclosRodouNoDossie: ciclosAtual !== null,
+      microAcoesRodouNoDossie: microAcoesAtual !== null,
+      porCiclo: microAcoesAtual ? microAcoesAtual.dados.porCiclo : [],
+      listaCiclos: ciclosAtual ? ciclosAtual.dados.lista : [],
+      onGravar: (dadosReconhecimento) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "reconhecimento", dadosReconhecimento, { origem: "F07-01/F07-02/F07-03/F07-05" });
+        renderTudo();
+        mostrarStatus(`Consenso gravado no dossiê (${dadosReconhecimento.nucleo.length} no núcleo, ${dadosReconhecimento.excecoes.length} em exceção).`, "ok");
       },
     });
   }

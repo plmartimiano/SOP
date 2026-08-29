@@ -14,11 +14,13 @@ dossiê), **1.2.3** (exportar/importar), **1.2.4** (interface por etapa),
 **1.3.1** (entrada de arquivo), **1.3.2** (triagem de qualidade), **1.3.3**
 (extração de frames), **1.3.4** (curva de movimento, geral **e** por zona),
 **1.3.5** (detecção de ciclos — ver ressalva sobre a revisão visual
-arrastável), **1.3.6** (fatiamento em micro-ações) e **1.4.1 + 1.4.2 +
-1.4.3** (leitura semântica) da EAP. Com isso, o bloco C do organograma (a
-parte "grátis" do pipeline) está completo, e a primeira chamada paga do
-projeto (bloco D, fase 06) já existe — com uma ressalva de arquitetura
-importante, ver a seção "Onde o navegador para de bastar" abaixo.
+arrastável), **1.3.6** (fatiamento em micro-ações), **1.4.1 + 1.4.2 +
+1.4.3** (leitura semântica) e **1.4.4 + 1.4.5** (consenso entre ciclos —
+ver ressalva sobre a estabilidade de ordem) da EAP. Com isso, o bloco C do
+organograma (a parte "grátis" do pipeline) está completo, a primeira
+chamada paga do projeto (bloco D, fase 06) já existe — com uma ressalva de
+arquitetura importante, ver "Onde o navegador para de bastar" — e o bloco D
+inteiro (fases 06 e 07) está fechado.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -196,6 +198,41 @@ importante, ver a seção "Onde o navegador para de bastar" abaixo.
   desiste depois do número configurado de tentativas, processa em grupos
   do tamanho certo (conferido por concorrência real, não só contagem de
   chamadas), e uma fatia falhando não trava as outras do mesmo lote.
+- `js/consenso-ciclos.js` — o alinhamento entre ciclos (F07-01 a F07-05):
+  cada ação de cada ciclo vira uma "assinatura" (verbo+objeto da leitura
+  semântica, ou a causa da fase 05 quando a leitura veio indeterminada ou
+  nem rodou), e um alinhamento tipo Needleman-Wunsch — a mesma técnica de
+  comparar sequências genéticas que o próprio plano cita — casa a sequência
+  de cada ciclo contra a do ciclo com mais ações (a referência), permitindo
+  lacunas quando uma ação falta num ciclo. Frequência ≥ 80% vira núcleo do
+  procedimento; abaixo disso vira exceção, listada, nunca descartada em
+  silêncio (F07-03). O ciclo exemplar (F07-05) é o mais aderente ao núcleo,
+  desempatado pela duração mais próxima da mediana. **Os ciclos marcados
+  suspeitos pela fase 04 são excluídos do consenso aqui** — é onde a regra
+  "não usar no consenso" do cartão F04-05 vira ação de código, não só um
+  destaque visual. **F07-04 (estabilidade de ordem) não está implementado**
+  — motivo é estrutural, não falta de tempo: o alinhamento contra uma
+  referência fixa é monotônico por construção (o traceback nunca anda pra
+  trás), então qualquer par que sobrevive como combinação já é, por
+  definição, não-decrescente — uma troca de posição de verdade não gera
+  uma "combinação fora de ordem" detectável nessa tabela, vira lacuna nos
+  dois lados. A troca ainda assim "aparece" (a ação cai em frequência e
+  desce pra exceções), só que pelo canal da frequência, não por um alerta
+  dedicado. Comentário detalhado no topo do arquivo.
+- `js/fase07-ui.js` — tela da fase 07: pede ciclos (fase 04) e micro-ações
+  (fase 05); calcula o consenso, mostra a tabela ação × ciclo (núcleo e
+  exceções em tabelas separadas, colunas dos ciclos suspeitos marcadas
+  "—"), avisa quando sobram poucos ciclos não suspeitos pra confiar no
+  resultado (sem bloquear — grava mesmo assim, com a ressalva visível), e
+  grava em `reconhecimento`. Diferente das fases 02-06, não depende de
+  nada na sessão do navegador — só do dossiê — então funciona mesmo depois
+  de recarregar a página.
+- `tests/consenso-ciclos.test.mjs` — testes com cenários pequenos e
+  hand-verificados (os valores esperados vieram de rodar as funções antes
+  de escrever as asserções, não de conta de cabeça): alinhamento de
+  sequências idênticas e com lacuna, escolha da referência pelo ciclo com
+  mais ações, cálculo de frequência, corte de 80%, escolha do ciclo
+  exemplar, e a exclusão de ciclos suspeitos do consenso.
 
 ## Onde o navegador para de bastar (fase 06 em diante)
 
@@ -403,14 +440,49 @@ Gemini nunca foi executada. O que foi validado:
   realmente conversa certo com a API do Gemini (o formato exato da
   requisição REST, o nome do modelo, o parsing da resposta). Isso só dá
   para confirmar depois do deploy na Vercel com uma `GEMINI_API_KEY` de
-  verdade — trate a primeira chamada real como teste de integração
-  pendente, não como coisa já validada.
+  verdade. **Decisão registrada**: o projeto segue em frente assumindo que
+  essa chamada funciona, sem essa validação ter sido feita — não porque foi
+  confirmada, mas por escolha explícita de manter o ritmo do projeto. Tudo
+  que foi construído a partir daqui (fase 07 em diante) herda esse risco
+  sem saber; é o primeiro item a conferir depois de um deploy de verdade.
+
+O consenso entre ciclos (1.4.4 + 1.4.5) foi validado de duas formas.
+Primeiro, com cenários pequenos e hand-verificados nos testes automatizados
+(alinhamento com e sem lacuna, escolha de referência, frequência, corte de
+80%, ciclo exemplar, exclusão de suspeitos). Foi exatamente esse processo
+de verificação manual que expôs o problema estrutural do F07-04 descrito
+acima — a primeira versão do código "passava" nos meus testes iniciais só
+porque eu não tinha testado um caso que expusesse a limitação; rodar
+cenários & imprimir o resultado antes de escrever a asserção (em vez de
+supor o valor esperado) foi o que revelou isso.
+
+Segundo, num Chromium real: como gerar um vídeo com exatamente a variação
+de ações entre ciclos que eu queria testar seria impraticável, montei um
+dossiê fixture à mão (`dossie-teste-consenso.json`, 5 ciclos, 1º e 5º
+suspeitos, uma ação presente em só 2 dos 3 ciclos válidos) e carreguei
+pelo botão normal de importar — o mesmo caminho que um usuário de verdade
+usaria para abrir um dossiê salvo. A tela calculou exatamente o que a
+lógica pura já tinha previsto (núcleo com as duas ações de 100%, exceção
+com a de 67%, referência e exemplar no ciclo 2), gravou sem apagar as
+seções anteriores, e o aviso de "poucos ciclos" apareceu certo quando
+testado com um fixture reduzido a 1 ciclo não suspeito (sem bloquear o
+botão de gravar). Nenhum erro de página em nenhum dos casos. Essa fase não
+depende de vídeo nem de rede — só do dossiê — então essa validação não tem
+a mesma ressalva de "não testado de verdade" que a fase 06 carrega.
 
 ## Próximos pacotes da EAP (não implementados ainda)
 
-- **Validar `api/leitura-semantica.js` contra o Gemini de verdade**, depois
-  do deploy — ver a ressalva de teste acima. É o item de maior risco de
-  tudo que foi construído até aqui.
+- **Validar `api/leitura-semantica.js` contra o Gemini de verdade.** Ainda
+  o item de maior risco de tudo que foi construído até aqui — ver a
+  ressalva de teste da fase 06 acima.
+- 1.4.4 (parte descartada, não pendente) — estabilidade de ordem (F07-04).
+  Diferente das outras lacunas desta lista, esta não é "ainda não
+  construída" — é uma limitação estrutural documentada em
+  `consenso-ciclos.js`: alinhamento contra uma referência fixa não
+  consegue representar troca de posição como uma combinação fora de
+  ordem, só como lacuna. Resolver isso de verdade precisaria de uma
+  comparação de ordem relativa independente da tabela ancorada na
+  referência.
 - 1.1.3 — glossário completo da estação (nome oficial, código interno e
   foto de referência por item). Hoje a fase 06 usa os nomes já cadastrados
   no mapa de zonas como substituto — funciona, mas é mais pobre que o
@@ -431,6 +503,7 @@ Gemini nunca foi executada. O que foi validado:
   gasto estimado). Com a fase 06 chamando um modelo pago de verdade agora,
   este pacote deixou de ser abstrato — é o próximo com utilidade real
   imediata.
-- 1.4.4 — alinhamento entre ciclos (fase 07, consenso): usa as leituras
-  semânticas que a fase 06 acabou de produzir em cada ciclo pra achar o que
-  se repete em 80% deles.
+- fase 08 (reconhecimento da estação) é o próximo passo natural do
+  pipeline: usa o núcleo do procedimento que o 1.4.5 acabou de calcular
+  para inventariar componentes e ferramentas e propor como agrupar em 6
+  passos — a primeira fase que pede homologação humana de verdade.
