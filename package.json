@@ -1,0 +1,14 @@
+{
+  "name": "sop-video",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SOP a partir de vídeo",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0"
+  }
+}

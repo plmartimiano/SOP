@@ -211,9 +211,11 @@ código de verdade, não só ausência de fase.
   Campo obrigatório ausente é erro, não silêncio (F06-03).
 - `api/leitura-semantica.js` — a função que roda fora do navegador (ver
   "Onde o navegador para de bastar" abaixo): recebe o payload do cliente,
-  monta o prompt via `_leitura-semantica-core.js`, chama o Gemini com a
-  chave guardada como variável de ambiente do servidor, e sanitiza a
-  resposta antes de devolver.
+  monta o prompt via `_leitura-semantica-core.js`, chama o Claude (via
+  `api/_cliente-claude.js`, com a chave guardada como variável de
+  ambiente do servidor), e sanitiza a resposta antes de devolver.
+  Trocado de Gemini para Claude no terceiro cartão de handoff de
+  2026-08-29 (ver "Onde o navegador para de bastar").
 - `js/leitura-semantica.js` — pacote 1.4.3 (controle de lotes): monta o
   payload de cada fatia (o trio antes/chave/depois a partir do índice do
   frame-chave), chama o proxy em lotes de até 4 em paralelo, com
@@ -583,10 +585,13 @@ código de verdade, não só ausência de fase.
   motivo de arquitetura das outras duas em `api/`): um único endpoint com
   um campo `tipo` (`"nota"`, `"ordem"` ou `"continuidade"`) que roteia
   pro prompt certo — os três são a mesma fase, então não fazia sentido
-  virarem três arquivos. **Reusa `GEMINI_MODEL` da fase 06** (o modelo de
-  visão, não o `GEMINI_IMAGE_MODEL` de geração da fase 13) — verificação
-  cega é leitura de imagem, não geração. Mesma ressalva de modelo não
-  confirmado das outras duas funções.
+  virarem três arquivos. Chama o **Claude** via `api/_cliente-claude.js`
+  (trocado de Gemini no terceiro cartão de handoff de 2026-08-29) —
+  verificação cega é leitura de imagem, não geração, o mesmo motivo pelo
+  qual a fase 06 também foi pro Claude, e diferente da fase 13, que
+  continua no Gemini. `effort` mais alto (`"medium"`) no tipo `"ordem"`
+  que nos outros dois (`"low"`) — comparar e sequenciar várias imagens é
+  mais raciocínio que uma nota ou uma comparação de par.
 - `js/verificacao-cega.js` — orquestração das três checagens. Usa sempre
   a **variação-âncora** de cada passo (a mesma que sustenta a cadeia da
   fase 13) como a imagem avaliada — ainda não existe tela pra escolher
@@ -675,11 +680,11 @@ código de verdade, não só ausência de fase.
 
 Até a fase 05, o projeto inteiro roda 100% no navegador — nenhum servidor,
 nenhuma chave, `python3 -m http.server` basta. A fase 06 precisa mandar
-imagens pra um modelo de visão pago (Gemini), e isso quebra essa regra de
-um jeito que não dá pra evitar: colocar a credencial paga direto no
-JavaScript do navegador a exporia a qualquer pessoa com o DevTools
-aberto. As fases 13 (geração de imagem) e 14 (verificação cega) têm
-exatamente o mesmo problema, com a mesma solução.
+imagens pra um modelo de visão pago, e isso quebra essa regra de um jeito
+que não dá pra evitar: colocar a credencial paga direto no JavaScript do
+navegador a exporia a qualquer pessoa com o DevTools aberto. As fases 13
+(geração de imagem) e 14 (verificação cega) têm exatamente o mesmo
+problema, com a mesma solução.
 
 A solução adotada é o menor desvio possível dessa regra: três funções
 (`api/leitura-semantica.js` para a fase 06, `api/gerar-imagem.js` para a
@@ -689,20 +694,24 @@ do lado do servidor — nunca num arquivo do projeto, nunca no navegador —
 e são as únicas peças que saem do "100% client-side". Todo o resto (fases
 00 a 05, 07 a 12, o dossiê, a navegação) continua exatamente como estava.
 
-**Dois cartões de handoff em 2026-08-29 mudaram esta seção inteira:**
+**Três cartões de handoff em 2026-08-29 mudaram esta seção inteira, o
+terceiro sendo o mais estrutural:**
 
-1. **Autenticação:** o cliente confirmado usa Gemini via **Vertex AI**
-   (projeto do Google Cloud + conta de serviço), não a Gemini Developer
-   API com uma chave simples que as três funções usavam antes. Não existe
-   mais uma `GEMINI_API_KEY` única — ver `api/_auth-vertex.js` para os
-   dois caminhos de autenticação suportados hoje (ADC via metadata server
-   quando roda no Google Cloud, chave de conta de serviço como
-   alternativa portável).
+1. **Autenticação (Gemini):** o cliente confirmou que usa Gemini via
+   **Vertex AI** (projeto do Google Cloud + conta de serviço), não a
+   Gemini Developer API com uma chave simples.
 2. **Hospedagem:** o cliente roda outras ferramentas dele dentro do
-   próprio Google Cloud (o mesmo `google.auth.default()` que dá pra ADC
-   automático no ponto 1 acima), então o projeto migrou de Vercel para um
-   serviço no **Cloud Run** — ver `server.js` e `Dockerfile` na raiz. Não
-   existe mais `vercel.json` nem dependência da CLI da Vercel.
+   próprio Google Cloud, então o projeto migrou de Vercel para um serviço
+   no **Cloud Run** — ver `server.js` e `Dockerfile` na raiz.
+3. **Troca de provedor:** o cliente decidiu não usar mais o Gemini. As
+   fases 06 e 14 (as duas são LEITURA de imagem — descrever o que uma
+   foto mostra, não criar uma) passam a usar o **Claude** (Anthropic) —
+   ver `api/_cliente-claude.js`. **A fase 13 continua no Gemini/Vertex
+   AI**, porque o Claude não gera imagem, só lê — não existe hoje um
+   modelo da Anthropic equivalente ao que a fase 13 precisa. Essa é a
+   primeira dependência de npm de verdade do projeto
+   (`@anthropic-ai/sdk`) — ver `package.json` e o `RUN npm install` que
+   entrou no `Dockerfile` por causa disso.
 
 **Para rodar isso de verdade (Cloud Run):**
 1. Publicar o projeto no Cloud Run (com a CLI `gcloud` instalada e
@@ -715,28 +724,32 @@ e são as únicas peças que saem do "100% client-side". Todo o resto (fases
    configurado à parte. Escolha `--region` livremente (é a região do
    *serviço*, independente da `GOOGLE_CLOUD_LOCATION` do Vertex AI
    abaixo, que o cliente confirmou como `global`).
-2. Anexar ao serviço uma conta de serviço com permissão de chamar o
-   Vertex AI (papel `roles/aiplatform.user` no mínimo) — com isso,
-   `api/_auth-vertex.js` consegue o token sozinho via ADC, **sem
-   precisar configurar nenhuma credencial como variável de ambiente**.
-   Configure só `GOOGLE_CLOUD_PROJECT` (obrigatória) e, se precisar,
-   `GOOGLE_CLOUD_LOCATION` (padrão `global`, já confirmado com o
-   cliente), `GEMINI_MODEL` (fases 06 e 14 — o modelo de visão) e
-   `GEMINI_IMAGE_MODEL` (fase 13 — o modelo de imagem) — ver
-   `.env.example`. **O nome exato dos dois modelos no projeto Vertex AI
-   do cliente não foi confirmado**: confirme os dois no console do
-   Vertex AI / Model Garden antes de configurar em produção. O modelo de
-   imagem padrão embutido no código (`gemini-2.5-flash-image`) também tem
-   desligamento anunciado para 02/10/2026 — se essa data já passou,
-   confirme o sucessor antes de seguir.
+2. Configurar `ANTHROPIC_API_KEY` (obrigatória — fases 06 e 14; sem
+   caminho de ADC automático aqui, diferente do Vertex AI, então essa
+   variável não tem como ficar de fora) e, se quiser trocar o modelo
+   padrão (`claude-opus-5`), `ANTHROPIC_MODEL`.
+3. Pra fase 13 (só ela ainda no Vertex AI): anexar ao serviço uma conta
+   de serviço com permissão de chamar o Vertex AI (papel
+   `roles/aiplatform.user` no mínimo) — com isso, `api/_auth-vertex.js`
+   consegue o token sozinho via ADC, **sem precisar configurar nenhuma
+   credencial como variável de ambiente**. Configure só
+   `GOOGLE_CLOUD_PROJECT` (obrigatória) e, se precisar,
+   `GOOGLE_CLOUD_LOCATION` (padrão `global`, já confirmado com o cliente)
+   e `GEMINI_IMAGE_MODEL` — ver `.env.example`. **O nome exato do modelo
+   de imagem no projeto Vertex AI do cliente não foi confirmado**:
+   confirme no console do Vertex AI / Model Garden antes de configurar em
+   produção. O modelo padrão embutido no código
+   (`gemini-2.5-flash-image`) também tem desligamento anunciado para
+   02/10/2026 — se essa data já passou, confirme o sucessor antes de
+   seguir.
    - Alternativa (fora do Google Cloud, ou sem poder anexar uma conta de
      serviço ao serviço do Cloud Run): configurar
      `GOOGLE_SERVICE_ACCOUNT_JSON` também funciona — `_auth-vertex.js`
      tenta o ADC primeiro e cai pra essa variável automaticamente se o
      metadata server não responder.
-3. Para testar as fases 06, 13 ou 14 localmente com as funções de
-   verdade, roda `node server.js` (zero dependências, nenhum `npm
-   install` necessário) — sobe estático + as três rotas juntos em
+4. Para testar as fases 06, 13 ou 14 localmente com as funções de
+   verdade: `npm install` (agora precisa, por causa do SDK do Claude) e
+   depois `node server.js` — sobe estático + as três rotas juntos em
    `http://localhost:8080`. O `python3 -m http.server` simples ainda
    funciona pras fases 00 a 05, 07 a 12 e 15 (que não dependem de
    nenhuma função), mas não serve as três rotas de `/api/`.
@@ -744,8 +757,10 @@ e são as únicas peças que saem do "100% client-side". Todo o resto (fases
 Depois de configurado, roda sozinho: a credencial nunca precisa ser
 digitada por ninguém a cada uso, não tem processo pra manter de pé (o
 Cloud Run escala o serviço sozinho a cada chamada; o token de acesso
-OAuth2 é obtido e renovado automaticamente por `api/_auth-vertex.js`, com
-cache em memória entre invocações "quentes" da instância).
+OAuth2 do Vertex AI é obtido e renovado automaticamente por
+`api/_auth-vertex.js`, com cache em memória entre invocações "quentes" da
+instância — a chave do Claude não precisa de renovação nenhuma, é usada
+direto).
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -785,14 +800,18 @@ o `http.server` simples não serve. Pra essas três, roda o servidor do
 próprio projeto em vez do `http.server`:
 
 ```
+npm install   # só na primeira vez (ou quando package.json mudar)
 node server.js
 # depois abra http://localhost:8080/index.html
 ```
 
-Zero dependências (nenhum `npm install`) — serve estático e as três rotas
-de `/api/` juntos. Ver "Onde o navegador para de bastar" abaixo para
-como configurar a autenticação com o Vertex AI antes de as três fases
-funcionarem de verdade (localmente ou publicadas no Cloud Run).
+`npm install` só existe por causa do `@anthropic-ai/sdk` (fases 06 e 14,
+via Claude) — é a única dependência do projeto inteiro; o resto continua
+zero dependência. Serve estático e as três rotas de `/api/` juntos. Ver
+"Onde o navegador para de bastar" abaixo para como configurar a
+autenticação (Claude para as fases 06/14, Vertex AI só para a fase 13)
+antes de as três fases funcionarem de verdade (localmente ou publicadas
+no Cloud Run).
 
 Para rodar os testes (Node 18+):
 
@@ -1368,6 +1387,21 @@ registrado como lacuna conhecida, não escondida.
   neste ambiente). Antes de considerar isto pronto: `docker build` local
   pra confirmar a imagem sobe, e um `gcloud run deploy` de teste contra
   um projeto Vertex AI de verdade.
+  **Terceiro cartão de handoff no mesmo dia — o mais estrutural dos
+  três:** o cliente decidiu não usar mais o Gemini. As fases 06 e 14
+  passam a chamar o **Claude** (`api/_cliente-claude.js`, primeira
+  dependência de npm de verdade do projeto — `@anthropic-ai/sdk`); a fase
+  13 continua no Gemini/Vertex AI porque o Claude não gera imagem.
+  Diferente do Google, **`api.anthropic.com` é alcançável deste
+  ambiente** — `tests/server.test.mjs` bate na API de verdade sem chave
+  configurada e confirma que o roteamento, o SDK e o tratamento de erro
+  funcionam ponta a ponta contra o serviço real (não simulado). O que
+  ainda falta, porque este ambiente não tem uma `ANTHROPIC_API_KEY` de
+  verdade pra gastar: **uma chamada bem-sucedida completa nunca
+  aconteceu** — confirmar que o Claude de fato segue as instruções do
+  prompt (não inventar objeto fora do glossário, JSON no formato exato,
+  etc.) e que o custo por chamada (imagens de vídeo, várias fatias por
+  vídeo) é aceitável na prática, com uma chave real e vídeo de exemplo.
 - 1.4.4 (parte descartada, não pendente) — estabilidade de ordem (F07-04).
   Diferente das outras lacunas desta lista, esta não é "ainda não
   construída" — é uma limitação estrutural documentada em

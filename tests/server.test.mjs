@@ -97,3 +97,19 @@ test("POST /api/gerar-imagem com corpo válido chega no handler de verdade (sem 
   const json = JSON.parse(r.corpo);
   assert.match(json.erro, /GOOGLE_CLOUD_PROJECT/);
 });
+
+// Diferente do Vertex AI, api.anthropic.com É alcançável deste ambiente
+// de teste — então esta chamada bate na API de verdade (sem
+// ANTHROPIC_API_KEY configurada aqui, o que é esperado: confirma que o
+// SDK oficial, a rota do servidor e o tratamento de erro estão
+// encadeados corretamente ponta a ponta, não só simulado.
+test("POST /api/leitura-semantica com corpo válido chega no handler de verdade e chama a API real do Claude (sem credencial, falha explicando o motivo)", async () => {
+  const r = await requisitar("/api/leitura-semantica", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ frames: { chave: "data:image/png;base64,iVBORw0KGgo=" }, tempoSegundos: 1 }),
+  });
+  assert.equal(r.status, 502);
+  const json = JSON.parse(r.corpo);
+  assert.match(json.erro, /Falha ao chamar o Claude/);
+});

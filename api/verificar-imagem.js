@@ -1,27 +1,23 @@
-// Pacote da fase 14 — proxy para o Gemini (verificação cega). Mesmo
+// Pacote da fase 14 — proxy para o Claude (verificação cega). Mesmo
 // motivo de arquitetura das outras duas funções em api/: a chave paga
 // não pode chegar ao navegador. Esta é a TERCEIRA chamada paga do
 // projeto — o `tipo: "pago"` de fases.js já dizia isso desde antes desta
 // fase existir.
 //
-// ATUALIZADO (cartão de handoff de 2026-08-29): mesma migração das
-// outras duas funções — o cliente usa Vertex AI, não a Gemini Developer
-// API. Ver api/_auth-vertex.js.
+// ATUALIZADO (cartão de handoff de 2026-08-29, terceira mudança no mesmo
+// dia): mesma migração de api/leitura-semantica.js — o cliente decidiu
+// não usar mais o Gemini. Verificação cega é LEITURA de imagem, não
+// geração, então o Claude cobre isso tão bem quanto a fase 06. Ver
+// api/_cliente-claude.js.
 //
-// Variáveis de ambiente exigidas (painel do projeto na Vercel, nunca
-// commitadas):
-//   GOOGLE_SERVICE_ACCOUNT_JSON  (obrigatória — ver api/_auth-vertex.js,
-//                                  mesma variável das fases 06 e 13)
-//   GOOGLE_CLOUD_PROJECT         (obrigatória)
-//   GOOGLE_CLOUD_LOCATION        (opcional, padrão "global")
-//   GEMINI_MODEL                 (opcional — reusa a mesma variável e o
-//                                  mesmo modelo da fase 06: verificação
-//                                  cega é LEITURA de imagem, não geração,
-//                                  então o modelo certo aqui é o
-//                                  multimodal de texto+visão, não o de
-//                                  imagem da fase 13. Mesma ressalva de
-//                                  "não confirmado".)
-const MODELO_PADRAO = "gemini-2.5-flash"; // CONFIRME antes de usar em produção — não verificado
+// Variável de ambiente exigida (configurar no serviço do Cloud Run, nunca
+// commitada no repositório):
+//   ANTHROPIC_API_KEY   (obrigatória — a mesma da fase 06)
+//   ANTHROPIC_MODEL      (opcional — padrão claude-opus-5)
+//
+// _verificar-imagem-core.js (os três prompts e a validação de cada
+// resposta) NÃO mudou — é lógica de texto pura, sem nada específico de
+// provedor.
 
 const {
   montarPromptNota,
@@ -31,11 +27,7 @@ const {
   sanitizarOrdem,
   sanitizarContinuidade,
 } = require("./_verificar-imagem-core.js");
-const { obterTokenDeAcesso, montarUrlVertex, lerProjetoELocation } = require("./_auth-vertex.js");
-
-function parteImagem({ imagemBase64, mimeType }) {
-  return { inline_data: { mime_type: mimeType || "image/png", data: imagemBase64 } };
-}
+const { obterCliente, modelo, parteImagem, extrairTexto, extrairJson } = require("./_cliente-claude.js");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -43,48 +35,44 @@ module.exports = async (req, res) => {
     return;
   }
 
-  let token, projeto, location;
-  try {
-    ({ projeto, location } = lerProjetoELocation());
-    token = await obterTokenDeAcesso();
-  } catch (e) {
-    res.status(500).json({ erro: e.message });
-    return;
-  }
-
   const corpo = req.body || {};
   const { tipo } = corpo;
-  const modelo = process.env.GEMINI_MODEL || MODELO_PADRAO;
 
-  let parts;
+  let conteudo;
+  // "ordem" compara e sequencia várias imagens (mais raciocínio de
+  // verdade que uma nota ou uma comparação de par) — effort "medium" em
+  // vez de "low" pelas outras duas, que são julgamentos mais diretos.
+  let effort = "low";
   if (tipo === "nota") {
     if (!corpo.imagemBase64) {
       res.status(400).json({ erro: "imagemBase64 é obrigatório para tipo=nota." });
       return;
     }
-    parts = [{ text: montarPromptNota() }, parteImagem(corpo)];
+    conteudo = [parteImagem(corpo), { type: "text", text: montarPromptNota() }];
   } else if (tipo === "ordem") {
     if (!Array.isArray(corpo.imagens) || corpo.imagens.length < 2) {
       res.status(400).json({ erro: "imagens (lista com pelo menos 2 itens) é obrigatório para tipo=ordem." });
       return;
     }
+    effort = "medium";
     const rotulos = corpo.imagens.map((i) => i.rotulo);
-    parts = [{ text: montarPromptOrdem(rotulos) }];
+    conteudo = [];
     for (const img of corpo.imagens) {
-      parts.push({ text: `Rótulo ${img.rotulo}:` });
-      parts.push(parteImagem(img));
+      conteudo.push({ type: "text", text: `Rótulo ${img.rotulo}:` });
+      conteudo.push(parteImagem(img));
     }
+    conteudo.push({ type: "text", text: montarPromptOrdem(rotulos) });
   } else if (tipo === "continuidade") {
     if (!corpo.imagemAntes || !corpo.imagemDepois) {
       res.status(400).json({ erro: "imagemAntes e imagemDepois são obrigatórios para tipo=continuidade." });
       return;
     }
-    parts = [
-      { text: montarPromptContinuidade() },
-      { text: "Primeira imagem:" },
+    conteudo = [
+      { type: "text", text: "Primeira imagem:" },
       parteImagem(corpo.imagemAntes),
-      { text: "Segunda imagem:" },
+      { type: "text", text: "Segunda imagem:" },
       parteImagem(corpo.imagemDepois),
+      { type: "text", text: montarPromptContinuidade() },
     ];
   } else {
     res.status(400).json({ erro: `tipo "${tipo}" desconhecido — use "nota", "ordem" ou "continuidade".` });
@@ -92,26 +80,23 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const respostaGemini = await fetch(montarUrlVertex({ projeto, location, modelo }), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json" } }),
+    const resposta = await obterCliente().messages.create({
+      model: modelo(),
+      max_tokens: 4096,
+      thinking: { type: "adaptive" },
+      output_config: { effort },
+      messages: [{ role: "user", content: conteudo }],
     });
 
-    if (!respostaGemini.ok) {
-      const corpoErro = await respostaGemini.text();
-      res.status(502).json({ erro: `Gemini respondeu ${respostaGemini.status}: ${corpoErro.slice(0, 300)}` });
+    if (resposta.stop_reason === "refusal") {
+      res.status(502).json({ erro: `Claude recusou a resposta (${resposta.stop_details?.category || "motivo não informado"}).` });
       return;
     }
 
-    const dadosGemini = await respostaGemini.json();
-    const texto = dadosGemini?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    let respostaModelo;
-    try {
-      respostaModelo = JSON.parse(texto);
-    } catch {
-      res.status(502).json({ erro: "Resposta do Gemini não veio em JSON válido." });
+    const texto = extrairTexto(resposta);
+    const respostaModelo = extrairJson(texto);
+    if (respostaModelo === null) {
+      res.status(502).json({ erro: "Resposta do Claude não veio em JSON válido." });
       return;
     }
 
@@ -126,6 +111,6 @@ module.exports = async (req, res) => {
     }
     res.status(200).json(sanitizada);
   } catch (e) {
-    res.status(502).json({ erro: `Falha ao chamar o Gemini: ${e.message}` });
+    res.status(502).json({ erro: `Falha ao chamar o Claude: ${e.message}` });
   }
 };

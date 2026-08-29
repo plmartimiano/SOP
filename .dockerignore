@@ -1,6 +1,7 @@
 .git
 .claude
 tests
+node_modules
 .env
 .env.*
 !.env.example
