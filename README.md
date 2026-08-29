@@ -24,17 +24,18 @@ aplica de verdade, sem perguntar de novo, a regra que a fase 08 homologou),
 conclusão, risco e estado do produto), a **fase 11** (mesa de validação
 humana — a barreira fixada desde o início do projeto: nenhuma imagem antes
 do aceite humano), a **fase 12** (prompts de ilustração — seis prompts em
-camadas mais o quadro-mestre da bancada vazia) e a **fase 13** (geração
-das imagens — a segunda e última chamada paga do projeto até aqui) da
-EAP. Com isso, o bloco C do organograma (a parte "grátis" do pipeline)
-está completo, a primeira chamada paga do projeto (bloco D, fase 06) já
-existe — com uma ressalva de arquitetura importante, ver "Onde o
-navegador para de bastar" — o bloco D inteiro (fases 06 e 07) está
-fechado, o bloco E (fases 08, 09 e 10 — reconhecimento, consolidação e
-ficha) também, e o pipeline inteiro até a geração de imagem (fases 11, 12
-e 13) está implementado e testado — a barreira "nenhuma imagem antes do
-aceite humano" agora é uma checagem de código de verdade, não só ausência
-de fase.
+camadas mais o quadro-mestre da bancada vazia), a **fase 13** (geração
+das imagens — a segunda chamada paga do projeto) e a **fase 14**
+(verificação cega — nota por quadro, teste de ordem embaralhada e
+checagem de continuidade, a terceira chamada paga) da EAP. Com isso, o
+bloco C do organograma (a parte "grátis" do pipeline) está completo, a
+primeira chamada paga do projeto (bloco D, fase 06) já existe — com uma
+ressalva de arquitetura importante, ver "Onde o navegador para de bastar"
+— o bloco D inteiro (fases 06 e 07) está fechado, o bloco E (fases 08, 09
+e 10 — reconhecimento, consolidação e ficha) também, e o pipeline inteiro
+até a verificação das imagens geradas (fases 11 a 14) está implementado e
+testado — a barreira "nenhuma imagem antes do aceite humano" é uma
+checagem de código de verdade, não só ausência de fase.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -548,6 +549,66 @@ de fase.
   contando quantas houve), as 3 variações de um mesmo passo rodam em
   paralelo (concorrência real medida, não só contagem), e um erro numa
   variação não trava as outras nem o resto da cadeia.
+- `api/_verificar-imagem-core.js` — núcleo puro da fase 14 (verificação
+  cega, a **terceira** chamada paga do projeto — o `tipo: "pago"` de
+  `fases.js` já dizia isso desde antes desta fase existir). Monta os três
+  prompts (nota por quadro, ordem embaralhada, continuidade entre um par)
+  e sanitiza a resposta de cada um, mesma disciplina de F06-04: uma nota
+  fora de 0–100, uma `ordemSugerida` que não é uma permutação exata dos
+  rótulos enviados (repetido, faltando, ou a mais), ou um `consistente`
+  que não é booleano, nunca viram dado gravado — viram erro explícito.
+- `api/verificar-imagem.js` — a função que roda fora do navegador (mesmo
+  motivo de arquitetura das outras duas em `api/`): um único endpoint com
+  um campo `tipo` (`"nota"`, `"ordem"` ou `"continuidade"`) que roteia
+  pro prompt certo — os três são a mesma fase, então não fazia sentido
+  virarem três arquivos. **Reusa `GEMINI_MODEL` da fase 06** (o modelo de
+  visão, não o `GEMINI_IMAGE_MODEL` de geração da fase 13) — verificação
+  cega é leitura de imagem, não geração. Mesma ressalva de modelo não
+  confirmado das outras duas funções.
+- `js/verificacao-cega.js` — orquestração das três checagens. Usa sempre
+  a **variação-âncora** de cada passo (a mesma que sustenta a cadeia da
+  fase 13) como a imagem avaliada — ainda não existe tela pra escolher
+  outra das três manualmente (lacuna registrada abaixo). `embaralharComRotulos`
+  (Fisher-Yates com `rng` injetável, pra teste determinístico)
+  troca os números reais dos passos por letras (A–F) antes de mandar pro
+  modelo — ele nunca vê a ordem verdadeira. **O gate central da fase**
+  (F14: "a sequência é reconstruível só pelas imagens") é calculado em
+  código, não pelo modelo: `avaliarOrdemSugerida` traduz a ordem de
+  letras que o modelo devolveu de volta pros números reais (usando o mapa
+  que o embaralhamento gerou) e compara posição a posição com a ordem
+  verdadeira — o modelo nunca sabe se acertou ou errou, só sugere. As
+  notas (quadro-mestre + 6 passos) e as continuidades (5 pares
+  consecutivos) rodam em paralelo entre si; a chamada de ordem é uma
+  chamada só, com as 6 (ou 7) imagens juntas.
+- `js/fase14-ui.js` — tela da fase 14: exige passos consolidados e as
+  imagens ainda na sessão do navegador (mesma limitação da fase 13 —
+  recarregar a página ou trocar de aba perde as imagens, nunca o dado
+  gravado); avisa o custo (13 chamadas no exemplo de 6 passos: 7 notas +
+  1 ordem + 5 continuidades) antes de rodar; mostra a nota e a descrição
+  de cada quadro numa tabela, o resultado do gate de ordem em destaque
+  (verde se reconstruível, vermelho com a contagem de acertos se não), e
+  as continuidades — marcando quantos pares o modelo achou inconsistentes
+  sem bloquear a gravação (é informação pra revisão humana, não um
+  segundo gate automático). Grava em `imagens`, a mesma seção da fase 13
+  — com `campoDistintivo: "notas"` (ver `js/fases.js`), porque as duas
+  fases compartilham a seção com formatos incompatíveis, mesmo problema
+  já resolvido entre as fases 07/08.
+- `tests/verificar-imagem-core.test.mjs` — 9 testes: nota aceita a faixa
+  0–100 (com arredondamento e saturação — não é invenção, é o mesmo dado
+  levado à faixa válida), rejeita valor não numérico; ordem aceita
+  qualquer permutação válida, rejeita repetição, rejeita faltar/sobrar
+  rótulo, rejeita quando não vem como lista; continuidade aceita
+  `consistente` `true`/`false`, rejeita quando não é booleano.
+- `tests/verificacao-cega.test.mjs` — 9 testes: o embaralhamento nunca
+  perde nem duplica um passo e é determinístico com `rng` fixo,
+  `avaliarOrdemSugerida` reconhece a sequência perfeita e aponta
+  exatamente as posições erradas quando não bate, a orquestração pede o
+  número certo de chamadas de cada tipo (com e sem quadro-mestre), o gate
+  é calculado a partir da resposta real do mock (não sempre `true`), um
+  erro numa nota isolada não afeta as outras nem a ordem nem a
+  continuidade, e as continuidades saem na ordem real dos pares mesmo
+  rodando em paralelo (confirmado com atrasos artificiais desencontrados
+  entre as chamadas).
 
 ## Onde o navegador para de bastar (fase 06 em diante)
 
@@ -555,33 +616,36 @@ Até a fase 05, o projeto inteiro roda 100% no navegador — nenhum servidor,
 nenhuma chave, `python3 -m http.server` basta. A fase 06 precisa mandar
 imagens pra um modelo de visão pago (Gemini), e isso quebra essa regra de
 um jeito que não dá pra evitar: colocar a chave paga direto no JavaScript
-do navegador a exporia a qualquer pessoa com o DevTools aberto. A fase 13
-(geração de imagem) tem exatamente o mesmo problema, com a mesma solução.
+do navegador a exporia a qualquer pessoa com o DevTools aberto. As fases
+13 (geração de imagem) e 14 (verificação cega) têm exatamente o mesmo
+problema, com a mesma solução.
 
-A solução adotada é o menor desvio possível dessa regra: duas funções
+A solução adotada é o menor desvio possível dessa regra: três funções
 serverless na Vercel (`api/leitura-semantica.js` para a fase 06,
-`api/gerar-imagem.js` para a fase 13), não um backend de verdade. As duas
-guardam a chave como variável de ambiente do servidor — nunca num arquivo
-do projeto, nunca no navegador — e são as únicas peças que saem do "100%
-client-side". Todo o resto (fases 00 a 05, 07 a 12, o dossiê, a
-navegação) continua exatamente como estava.
+`api/gerar-imagem.js` para a fase 13, `api/verificar-imagem.js` para a
+fase 14), não um backend de verdade. As três guardam a chave como
+variável de ambiente do servidor — nunca num arquivo do projeto, nunca no
+navegador — e são as únicas peças que saem do "100% client-side". Todo o
+resto (fases 00 a 05, 07 a 12, o dossiê, a navegação) continua
+exatamente como estava.
 
 **Para rodar isso de verdade:**
 1. Publicar o projeto na Vercel (conectar o repositório, deploy automático
    a cada push).
-2. Configurar `GEMINI_API_KEY` (obrigatória, compartilhada pelas duas
-   funções) e, se precisar, `GEMINI_MODEL` e `GEMINI_IMAGE_MODEL` no
-   painel do projeto — ver `.env.example` para o que cada uma faz. **O
-   nome exato dos modelos de visão e de imagem da conta paga não foi
-   confirmado, em nenhum dos dois casos**: o ambiente onde este código
-   foi escrito não tem acesso de rede a domínios do Google, então os
-   valores padrão embutidos no código são palpites razoáveis, não fatos
-   verificados. Confirme os dois no Google AI Studio antes de configurar
-   em produção.
-3. Para testar as fases 06 ou 13 localmente com as funções de verdade, é
-   preciso `vercel dev` (que precisa da CLI da Vercel e login) em vez do
-   `python3 -m http.server` simples — as demais fases continuam
-   funcionando com o servidor simples, só essas duas dependem de função.
+2. Configurar `GEMINI_API_KEY` (obrigatória, compartilhada pelas três
+   funções) e, se precisar, `GEMINI_MODEL` (fases 06 e 14 — o modelo de
+   visão) e `GEMINI_IMAGE_MODEL` (fase 13 — o modelo de imagem) no painel
+   do projeto — ver `.env.example` para o que cada uma faz. **O nome
+   exato dos dois modelos da conta paga não foi confirmado, em nenhum dos
+   dois casos**: o ambiente onde este código foi escrito não tem acesso
+   de rede a domínios do Google, então os valores padrão embutidos no
+   código são palpites razoáveis, não fatos verificados. Confirme os dois
+   no Google AI Studio antes de configurar em produção.
+3. Para testar as fases 06, 13 ou 14 localmente com as funções de
+   verdade, é preciso `vercel dev` (que precisa da CLI da Vercel e login)
+   em vez do `python3 -m http.server` simples — as demais fases
+   continuam funcionando com o servidor simples, só essas três dependem
+   de função.
 
 Depois de configuradas, rodam sozinhas: a chave nunca precisa ser digitada
 por ninguém a cada uso, não tem processo pra manter de pé (a Vercel
@@ -991,14 +1055,51 @@ ficou com pouco mais de 3 KB — não os potenciais megabytes que 19
 imagens em base64 ocupariam se tivessem ido para o JSON. Nenhum erro de
 página em nenhum dos três testes.
 
+A verificação cega (fase 14) foi validada com `tests/verificar-imagem-core.test.mjs`
+(9 testes) e `tests/verificacao-cega.test.mjs` (9 testes) — lógica pura e
+orquestração com `fetch` simulado, ver lista de módulos acima — e um
+encadeamento completo 07 → 08 → 09 → 10 → 11 → 12 → 13 → 14 num Chromium
+real, com `/api/gerar-imagem` e `/api/verificar-imagem` interceptados ao
+mesmo tempo. Sem passos ou sem imagens na sessão, a fase 14 explica o que
+falta, sem tentar montar a tela. Depois de gerar as imagens na fase 13,
+rodei a verificação cega: o aviso de custo mostrou as 13 chamadas certas
+(7 notas + 1 ordem + 5 continuidades para 6 passos), a contagem real de
+chamadas ao proxy bateu exatamente com isso, a tabela de notas mostrou os
+7 quadros com a nota e a descrição simuladas, e as 5 continuidades
+mostraram "consistente" (o mock sempre devolve `true`).
+
+O teste mais importante desta fase foi o do **gate de ordem**: o mock do
+`/api/verificar-imagem` para `tipo=ordem` devolve os rótulos exatamente
+na ordem em que os recebeu (não reordena de verdade) — como as imagens
+chegam nele já embaralhadas, isso simula um "modelo que não acerta nada"
+de propósito, um cenário mais informativo de testar do que sempre
+simular acerto perfeito. O resultado foi exatamente o esperado: "Gate
+F14 falhou: só 0 de 6 posições bateram com a ordem real" — confirmando
+que o cálculo usa a resposta de verdade do proxy, comparada contra a
+ordem real guardada no lado do cliente, não um valor fixo. O caminho
+"gate passa" (`sequenciaReconstruivel: true`) já está coberto com certeza
+absoluta pelos testes automatizados determinísticos (`rng` fixo); não
+haveria ganho real em forçar esse mesmo cálculo, já provado, contra um
+mock de navegador que só reproduziria o mesmo resultado de um jeito mais
+caro de verificar.
+
+Por fim, gravar confirmou o `campoDistintivo` funcionando de novo, agora
+entre as fases 13 e 14 (que compartilham a seção `imagens` com formatos
+incompatíveis, mesmo problema já resolvido entre 07/08): depois da fase
+14 gravar sua versão com `notas`/`ordem`/`continuidades`, voltar pra tela
+da fase 13 mostrou que o "Estado no dossiê" continuava com os `itens` da
+própria fase 13, não os dados da fase 14. Nenhum erro de página em
+nenhum passo.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
-- **Validar `api/leitura-semantica.js` e `api/gerar-imagem.js` contra o
-  Gemini de verdade.** Ainda os itens de maior risco de tudo que foi
-  construído até aqui — ver a ressalva de teste das fases 06 e 13 acima.
-  As duas funções nunca foram chamadas de verdade (só simuladas via
-  `page.route()`); o nome exato dos dois modelos (visão e imagem) também
-  não foi confirmado.
+- **Validar `api/leitura-semantica.js`, `api/gerar-imagem.js` e
+  `api/verificar-imagem.js` contra o Gemini de verdade.** Ainda os itens
+  de maior risco de tudo que foi construído até aqui — ver a ressalva de
+  teste das fases 06, 13 e 14 acima. As três funções nunca foram chamadas
+  de verdade (só simuladas via `page.route()`); o nome exato dos dois
+  modelos envolvidos (visão, reusado pelas fases 06 e 14; imagem, só da
+  fase 13) também não foi confirmado.
 - 1.4.4 (parte descartada, não pendente) — estabilidade de ordem (F07-04).
   Diferente das outras lacunas desta lista, esta não é "ainda não
   construída" — é uma limitação estrutural documentada em
@@ -1053,15 +1154,17 @@ página em nenhum dos três testes.
   pessoa escolher qual das três (ou se nenhuma) representa bem o passo.
   Isso não estava explícito no plano original como pacote separado; fica
   registrado aqui como lacuna descoberta ao implementar F13.
-- fase 14 (verificação cega) é o próximo passo natural do pipeline: a
-  **terceira** chamada paga do projeto (o plano original não deixa isso
-  óbvio à primeira vista, mas o `tipo: "pago"` de `fases.js` já estava
-  certo desde a fase 1.2.4) — manda as imagens geradas, sozinhas e sem a
-  ficha, de volta pro Gemini, pedindo uma nota por quadro, checagem de
-  continuidade entre eles e um teste de ordem embaralhada (a sequência
-  precisa ser reconstruível só pelas imagens). Tem uma limitação de
-  arquitetura herdada da fase 13: como as imagens vivem só na sessão do
-  navegador (nunca no dossiê — ver acima), a fase 14 só pode rodar na
-  MESMA aba/sessão onde a fase 13 gerou as imagens, a menos que se
-  resolva primeiro como reidratar imagens de uma sessão anterior (fora de
-  escopo até aqui).
+- Limitação de sessão compartilhada por três fases seguidas (13, 14 e
+  agora 15) — nenhuma delas guarda a imagem no dossiê (F01-01), então
+  todo o trecho "gerar → verificar → diagramar" precisa acontecer na
+  MESMA aba, sem recarregar a página. Reidratar imagens de uma sessão
+  anterior (por exemplo, reabrindo um dossiê salvo dias depois) é uma
+  lacuna real, fora de escopo até aqui.
+- fase 15 (diagramação e entrega) é o próximo passo natural do pipeline —
+  e a última fase "padrao" (sem custo) antes do encerramento do fluxo
+  principal: monta o SOP final em PDF e PNG a partir das seis imagens
+  aprovadas (o critério de aprovação em si ainda não existe — a fase 14
+  só verifica clareza e continuidade, não decide "aprovado"; ver a lacuna
+  de escolha de variação acima, que também se aplica aqui) e das fichas,
+  com 80% de espaço visual e 20% de texto sobreposto FORA da IA — nenhuma
+  chamada paga nesta fase, é montagem de documento.

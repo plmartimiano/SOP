@@ -19,7 +19,8 @@ import { montarFichas } from "./fase10-ui.js";
 import { montarValidacao } from "./fase11-ui.js";
 import { montarPrompts } from "./fase12-ui.js";
 import { montarGeracaoImagens } from "./fase13-ui.js";
-import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, definirImagensGeradas, limparSessaoMidia } from "./sessao-midia.js";
+import { montarVerificacaoCega } from "./fase14-ui.js";
+import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, definirImagensGeradas, obterImagensGeradas, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
 
@@ -37,6 +38,7 @@ const TITULO_FERRAMENTA = {
   "11": "Validar e aprovar",
   "12": "Montar os prompts",
   "13": "Gerar as imagens",
+  "14": "Verificar às cegas",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -159,7 +161,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -363,6 +365,25 @@ function renderPainel() {
         renderTudo();
         const sucesso = dadosImagens.itens.filter((i) => i.sucesso).length;
         mostrarStatus(`${sucesso} de ${dadosImagens.itens.length} imagens geradas e gravadas no dossiê (metadados) e na sessão (imagens em si).`, "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "14") {
+    const passosAtual = dossie ? obterVersaoAtual(dossie, "passos") : null;
+    montarVerificacaoCega(document.getElementById("faseFerramenta"), {
+      passos: passosAtual ? passosAtual.dados.passos : null,
+      imagensGeradas: obterImagensGeradas(),
+      onGravar: (dadosVerificacao) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "imagens", dadosVerificacao, { origem: "fase 14 (verificação cega)" });
+        renderTudo();
+        mostrarStatus(
+          dadosVerificacao.gateSequenciaReconstruivel
+            ? "Verificação cega gravada — sequência reconstruível só pelas imagens."
+            : "Verificação cega gravada — a sequência NÃO foi totalmente reconstruível só pelas imagens (ver detalhe na tela).",
+          dadosVerificacao.gateSequenciaReconstruivel ? "ok" : "erro"
+        );
       },
     });
   }
