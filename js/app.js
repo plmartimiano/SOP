@@ -17,6 +17,7 @@ import { montarReconhecimento } from "./fase08-ui.js";
 import { montarConsolidacao } from "./fase09-ui.js";
 import { montarFichas } from "./fase10-ui.js";
 import { montarValidacao } from "./fase11-ui.js";
+import { montarPrompts } from "./fase12-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -33,6 +34,7 @@ const TITULO_FERRAMENTA = {
   "09": "Consolidar nos 6 passos",
   "10": "Gerar a ficha de cada passo",
   "11": "Validar e aprovar",
+  "12": "Montar os prompts",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -155,7 +157,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -326,6 +328,22 @@ function renderPainel() {
         adicionarVersao(dossie, "aprovacoes", dadosAprovacao, { origem: "fase 11 (mesa de validação humana)" });
         renderTudo();
         mostrarStatus(`Aprovação assinada por ${dadosAprovacao.aprovacao.responsavel} (${dadosAprovacao.aprovacao.totalCorrecoes} correção${dadosAprovacao.aprovacao.totalCorrecoes === 1 ? "" : "ões"}).`, "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "12") {
+    const aprovacoesAtual = dossie ? obterVersaoAtual(dossie, "aprovacoes") : null;
+    const mapaDeZonasAtual = dossie ? obterVersaoAtual(dossie, "mapaDeZonas") : null;
+    montarPrompts(document.getElementById("faseFerramenta"), {
+      fichasAprovadas: aprovacoesAtual ? aprovacoesAtual.dados.fichas : null,
+      nomeEstacao: dossie ? dossie.estacao.nome : "",
+      zonas: mapaDeZonasAtual ? mapaDeZonasAtual.dados.zonas : [],
+      onGravar: (dadosPrompts) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "prompts", dadosPrompts, { origem: "fase 12 (prompts de ilustração)" });
+        renderTudo();
+        mostrarStatus(`${dadosPrompts.passos.length + 1} prompts gravados no dossiê (6 passos + quadro-mestre).`, "ok");
       },
     });
   }

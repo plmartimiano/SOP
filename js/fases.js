@@ -149,6 +149,7 @@ export const FASES = [
     sai: "Seis prompts em camadas, com 70% do texto idêntico entre eles, e o quadro-mestre da bancada vazia.",
     gate: "Lendo só o prompt você conseguiria desenhar a cena — e nenhum pede texto dentro da imagem.",
     secaoDossie: "prompts",
+    notaSecao: "A \"bíblia visual\" do plano ainda não é um recurso reusável de verdade (depende da biblioteca de estações, pacote 1.8.4) — aqui ela é uma constante fixa de estilo (js/biblia-visual.js), igual para todo dossiê, não escolhida pela pessoa. Os 70% de texto idêntico citados no plano não são medidos nem forçados pelo código: são a consequência natural de reusar a mesma camada compartilhada, literalmente igual, em todos os prompts — o que o código garante é essa igualdade, não uma porcentagem. O gate \"nenhum pede texto\" é uma checagem por palavra-chave sobre o texto final (pega um pedido de texto vindo de um campo de ficha corrigido à mão, já que o texto fixo do programa nunca pede isso sozinho) — heurística, não prova.",
   },
   {
     numero: "13",

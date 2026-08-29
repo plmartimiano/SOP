@@ -21,15 +21,19 @@ ver ressalva sobre a estabilidade de ordem), **1.5.1 + 1.5.2 + 1.5.3**
 agrupamento, com homologação humana), **1.5.4** (motor de consolidação —
 aplica de verdade, sem perguntar de novo, a regra que a fase 08 homologou),
 **1.6** (a ficha de cada passo — mãos, ferramenta, peças, critério de
-conclusão, risco e estado do produto) e a **fase 11** (mesa de validação
+conclusão, risco e estado do produto), a **fase 11** (mesa de validação
 humana — a barreira fixada desde o início do projeto: nenhuma imagem antes
-do aceite humano) da EAP. Com isso, o bloco C do organograma (a parte
-"grátis" do pipeline) está completo, a primeira chamada paga do projeto
-(bloco D, fase 06) já existe — com uma ressalva de arquitetura importante,
-ver "Onde o navegador para de bastar" — o bloco D inteiro (fases 06 e 07)
+do aceite humano) e a **fase 12** (prompts de ilustração — seis prompts
+em camadas mais o quadro-mestre da bancada vazia) da EAP. Com isso, o
+bloco C do organograma (a parte "grátis" do pipeline) está completo, a
+primeira chamada paga do projeto (bloco D, fase 06) já existe — com uma
+ressalva de arquitetura importante, ver "Onde o navegador para de bastar"
+— o bloco D inteiro (fases 06 e 07)
 está fechado, o bloco E (fases 08, 09 e 10 — reconhecimento, consolidação
-e ficha) também, e a última barreira humana antes de qualquer geração de
-imagem (fase 11) está implementada e testada.
+e ficha) também, a última barreira humana antes de qualquer geração de
+imagem (fase 11) está implementada e testada, e a fase 12 monta os
+prompts que a fase 13 (a segunda chamada paga do projeto, ainda não
+construída) vai usar.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -432,6 +436,54 @@ imagem (fase 11) está implementada e testada.
   depois de aplicar uma correção, validação de assinatura (nome/cargo
   obrigatórios, espaço em branco conta como vazio), e `montarAprovacao`
   monta certo tanto com correções quanto com zero correções.
+- `js/biblia-visual.js` — a "bíblia visual" do plano original, versão
+  simplificada (mesmo espírito de `vocabulario-verbos.js`): uma constante
+  fixa de estilo de ilustração (técnica, paleta, ângulo de câmera, fundo),
+  não uma tela de edição nem um recurso reusável de verdade entre vídeos.
+  A bíblia visual de verdade é recurso da estação (biblioteca de estações,
+  pacote 1.8.4, ainda não construída) — até lá, todo dossiê usa este mesmo
+  estilo fixo, definido em código, nunca escolhido pela pessoa.
+- `js/prompts.js` — fase 12 (prompts de ilustração, "o comando exato que
+  a IA de imagem vai receber"): monta uma **camada compartilhada** (nome
+  da estação + zonas do mapa da fase 00 + o estilo de `biblia-visual.js` +
+  uma instrução negativa fixa contra texto embutido na imagem) — a mesma
+  string, byte a byte, em todos os sete prompts — e concatena com uma
+  **camada específica** por prompt: para o quadro-mestre, a instrução de
+  bancada vazia (sem peça, sem mão, sem operador); para cada um dos 6
+  passos, os dados reais da ficha aprovada na fase 11 (mãos, ferramenta,
+  peças, estado do produto antes/depois, critério de conclusão). **O
+  campo `risco` nunca entra no prompt** — é dado de segurança para a
+  documentação final (o texto sobreposto da fase 15), não uma instrução
+  visual; não existe "desenhar risco de esmagamento" numa ilustração
+  técnica da cena (decisão descoberta ao testar em navegador — ver "Como
+  isso foi testado" — e travada com um teste automatizado dedicado, pra
+  nunca regredir por engano). Os "70% de texto idêntico" citados no plano
+  original não são um número que o código mede ou persegue — são só a
+  consequência natural de reusar a mesma camada compartilhada, literalmente
+  igual; o que o código garante é essa igualdade estrutural, testada como
+  tal. Os dois gates da fase: `verificarSemPedidoDeTexto` é uma checagem
+  por palavra-chave (o texto fixo do programa nunca pede texto embutido
+  sozinho; o risco real é um campo de ficha corrigido à mão na fase 11
+  que descreva, sem querer, um pedido de texto — por isso é heurística,
+  não prova) e `verificarCobertura` confirma que cada dado real da ficha
+  (mãos, ferramenta, peças, título) aparece no texto final do prompt —
+  uma aproximação de "lendo só o prompt você conseguiria desenhar a
+  cena", não uma prova de que o prompt é bem escrito.
+- `js/fase12-ui.js` — tela da fase 12: exige uma aprovação gravada na
+  fase 11 (lê o `final` de cada ficha, já com as correções aplicadas);
+  gera o quadro-mestre e os 6 prompts, roda os dois gates em cada um, e
+  mostra cada prompt com a camada compartilhada em cinza e a parte
+  específica do passo em preto — visualmente clara qual fração do texto é
+  igual entre todos. Grava só depois de mostrado; não há assinatura aqui
+  (tipo "padrao", igual às fases 09/10).
+- `tests/prompts.test.mjs` — 9 testes: a camada compartilhada é idêntica
+  no quadro-mestre e em todos os prompts de passo, o quadro-mestre
+  descreve a bancada vazia, o prompt do passo cobre mãos/ferramenta/peças,
+  `verificarCobertura` acusa exatamente o que falta, nenhum prompt gerado
+  pelo template pede texto embutido, `verificarSemPedidoDeTexto` pega um
+  pedido de texto vindo de dado da ficha (não do template), a ordem dos
+  passos recebidos é preservada sem reordenar, uma estação sem zonas
+  mapeadas não quebra, e o campo `risco` nunca aparece no prompt.
 
 ## Onde o navegador para de bastar (fase 06 em diante)
 
@@ -810,6 +862,35 @@ reprodução avançar, o vídeo parou sozinho exatamente em `currentTime` =
 `timeupdate` funciona de verdade, não só na leitura do código. Nenhum
 erro de página em nenhum dos três testes.
 
+Os prompts de ilustração (fase 12) foram validados com `tests/prompts.test.mjs`
+(9 testes, ver lista de módulos acima) e um encadeamento completo
+07 → 08 → 09 → 10 → 11 → 12 num Chromium real, com o mesmo fixture das
+fases anteriores: sem fichas aprovadas, a fase 12 pediu pra rodar a fase
+11 primeiro (testado tanto antes quanto depois de rodar 07-10, pra
+confirmar que a dependência é realmente da aprovação, não dos passos por
+si só); depois de aprovar (corrigindo o risco do passo 1 de propósito, pra
+confirmar que a fase 12 lê o valor `final` pós-correção, não o `original`
+da fase 10), a fase 12 gerou os 7 prompts esperados (quadro-mestre + 6
+passos), todos passando nos dois gates, com a camada compartilhada
+comprovadamente idêntica (comparei a string exata extraída de cada um dos
+7 cartões — um único valor distinto no conjunto). Gravar acendeu o ponto
+verde da fase 12.
+
+**Um achado real durante este teste, não um bug**: a primeira versão do
+roteiro esperava que o risco corrigido ("Risco de esmagamento dos dedos —
+usar luva.") aparecesse no texto do prompt do passo 1, e ele não
+aparecia. Investiguei antes de "corrigir" qualquer coisa — a mesma
+disciplina de nunca aceitar um resultado surpreendente sem entender por
+quê — e percebi que o comportamento estava certo: `risco` é dado de
+segurança para a documentação final (o texto sobreposto da fase 15), não
+uma instrução visual para uma IA de ilustração técnica. O teste do
+roteiro foi corrigido para confirmar o oposto (o risco NÃO aparece), a decisão
+foi documentada explicitamente no comentário de `js/prompts.js`, e um
+teste automatizado dedicado (`tests/prompts.test.mjs`) trava esse
+comportamento contra regressão futura. Registrado aqui porque esse é
+exatamente o tipo de coisa que vale mais a pena mostrar o processo do que
+só o resultado final. Nenhum erro de página em nenhum passo do teste.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - **Validar `api/leitura-semantica.js` contra o Gemini de verdade.** Ainda
@@ -861,15 +942,24 @@ erro de página em nenhum dos três testes.
   este pacote deixou de ser abstrato — é o próximo com utilidade real
   imediata.
 - A aplicação de verdade da barreira "nenhuma imagem antes do aceite
-  humano" — hoje ela existe só porque as fases 12 e 13 (prompts e geração
-  de imagem) ainda não foram construídas, não porque algum código verifica
-  a seção `aprovacoes`. Quando essas fases forem implementadas, a
-  primeira coisa que precisam fazer é recusar rodar sem uma versão
-  gravada ali — documentado como requisito, não implementado ainda,
-  porque não existe o que bloquear.
-- fase 12 (prompts de ilustração) é o próximo passo natural do pipeline:
-  entra com as fichas aprovadas da fase 11 (o valor `final` de cada uma,
-  já com as correções aplicadas) + a bíblia visual e o mapa de zonas da
-  fase 00, e monta os seis prompts em camadas que a fase 13 vai usar para
-  gerar as imagens — a primeira fase depois da barreira humana, e a
-  última antes da segunda chamada paga do projeto.
+  humano" — a fase 12 já lê `aprovacoes` para funcionar (sem uma versão
+  gravada ali, ela se recusa a montar os prompts), mas isso ainda não é
+  o bloqueio "de verdade": hoje ele existe só porque a fase 13 (geração de
+  imagem) ainda não foi construída, não porque algum código dela verifica
+  a aprovação. Quando a fase 13 existir, a primeira coisa que precisa
+  fazer é recusar rodar sem uma versão gravada em `aprovacoes` — mesmo
+  que os prompts existam, gerados numa sessão anterior, sem que o aceite
+  também exista.
+- A bíblia visual de verdade (glossário visual reusável por estação, com
+  referências de imagem) — hoje `js/biblia-visual.js` é uma constante fixa
+  igual pra todo dossiê, mesma simplificação de `vocabulario-verbos.js`.
+  Depende da biblioteca de estações (1.8.4, ver acima).
+- fase 13 (geração das imagens) é o próximo passo natural do pipeline: a
+  segunda e última chamada paga do projeto planejada até aqui — gera os
+  seis quadros em cadeia (cada um referenciando o quadro-mestre e/ou o
+  anterior, pra manter a bancada reconhecível) a partir dos prompts que a
+  fase 12 acabou de montar, com semente fixa e três variações por passo.
+  É a primeira fase que precisa de verdade checar `aprovacoes` antes de
+  rodar (ver bullet acima) — sem isso, a barreira "nenhuma imagem antes
+  do aceite" continua sendo só a ausência da própria fase, não uma
+  garantia de código.
