@@ -713,6 +713,20 @@ terceiro sendo o mais estrutural:**
    (`@anthropic-ai/sdk`) — ver `package.json` e o `RUN npm install` que
    entrou no `Dockerfile` por causa disso.
 
+**Quarto cartão de handoff, mesmo dia — só a fase 13, não muda nada das
+fases 06/14 nem da hospedagem:** o cliente pediu pra não automatizar a
+chamada ao Gemini por enquanto — quer confirmar o processo na mão antes.
+`js/fase13-ui.js` ganhou um **modo manual** (o padrão agora, com um botão
+pra alternar pro modo automático de sempre, que continua funcionando sem
+nenhuma mudança): a tela mostra o prompt de cada uma das 19 imagens (com
+botão de copiar) e — quando o item referencia outro da cadeia — uma
+prévia da imagem de referência, pra anexar junto com o prompt numa
+conversa manual com o Gemini. Um campo de upload por cartão traz a imagem
+gerada de volta pra dentro da sessão do app. Os dois modos gravam no
+dossiê exatamente no mesmo formato (`onGravar(dadosImagens, mapaImagens)`
+idêntico) — as fases 14 e 15 não sabem, e não precisam saber, se uma
+imagem veio da API ou de um upload manual.
+
 **Para rodar isso de verdade (Cloud Run):**
 1. Publicar o projeto no Cloud Run (com a CLI `gcloud` instalada e
    autenticada no projeto do cliente):
