@@ -38,6 +38,23 @@ export function filtrarValesProximos(vales, distanciaMinimaSegundos = 0.5) {
 // é evidência forte de causa. Limiar simples — pico bem acima da própria
 // média da zona — é o primeiro corte; calibrar contra vídeo real é
 // trabalho futuro, não deste pacote.
+//
+// PASSO — por que DOIS critérios combinados (`pico > 5 && pico > media * 2`),
+// não um só. Média relativa sozinha falharia numa zona quase sempre
+// parada (média perto de zero: qualquer ruído mínimo pareceria "2x a
+// média"); um limiar absoluto sozinho falharia numa zona naturalmente
+// mais ativa (uma ferramenta usada o tempo todo teria picos absolutos
+// grandes mesmo sem fronteira de verdade). Juntando os dois, uma zona só
+// conta como "ativa" se o pico for relevante NOS DOIS SENTIDOS ao mesmo
+// tempo — evita os dois jeitos de falso positivo.
+//
+// A classificação em si é uma tabela de decisão de duas variáveis
+// booleanas (tem zona de componente ativa? tem zona de ferramenta
+// ativa?): as duas juntas é "combinada" (pegou peça E trocou ferramenta
+// na mesma fronteira), só componente é "componente_novo", só ferramenta
+// é "troca_ferramenta", nenhuma das duas é "pausa_conferencia" (a mão
+// parou sem visitar zona nenhuma — o caso que sobra quando não há
+// evidência de pegar nada, plausível como "parou pra olhar/testar").
 export function classificarFronteira(tempoSegundos, curvaPorZona, zonas, janelaSegundos = 0.5) {
   const zonasAtivas = [];
   for (const zona of zonas) {

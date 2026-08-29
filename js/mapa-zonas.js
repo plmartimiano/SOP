@@ -2,6 +2,26 @@
 // Funções puras: geometria e validação de zona. O desenho em si (canvas,
 // upload de imagem, arrastar retângulo) mora em fase00-ui.js, que é DOM e
 // só se testa no navegador.
+//
+// PASSO 1 — por que coordenadas normalizadas (0–1), não pixels.
+// A foto ou frame usado pra mapear as zonas na fase 00 não é necessariamente
+// o mesmo frame, na mesma resolução, que o vídeo real vai produzir depois
+// (curva-movimento.js reamostra em miniaturas 64×64, bem menores que
+// qualquer foto de mapeamento). Guardar {x, y, largura, altura} como
+// FRAÇÃO do quadro (0 a 1 em cada eixo) — não pixel absoluto — deixa uma
+// zona desenhada numa foto 1920×1080 continuar correta quando aplicada a
+// uma grade 64×64: é só multiplicar a fração pela dimensão de destino
+// (feito em curva-movimento.js: indicesDaZona).
+//
+// PASSO 2 — por que id sequencial (Z01, Z02...) em vez de um id opaco
+// (uuid, timestamp). O id aparece na tela pra um humano ler ("a zona Z03
+// registrou pico") e na leitura semântica como referência de contexto —
+// um número curto e ordenado é mais fácil de acompanhar numa lista do
+// que um hash. O preço dessa escolha é ter que renumerar quando uma zona
+// do meio é removida (função abaixo) — aceitável porque zonas são
+// poucas (tipicamente menos de 10 por estação) e mexidas raramente,
+// diferente de, digamos, os frames extraídos (centenas), que usam índice
+// posicional sem se preocupar em "renumerar" nada.
 
 export const TIPOS_ZONA = ["escaninho", "ferramenta", "area_trabalho", "saida"];
 

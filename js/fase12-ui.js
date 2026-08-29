@@ -16,7 +16,18 @@ import { gerarPrompts, verificarSemPedidoDeTexto, verificarCobertura } from "./p
 // zonas: mapaDeZonas.zonas (fase 00) ou [].
 // onGravar: (dadosPrompts) => void — grava nova versão em "prompts".
 export function montarPrompts(container, { fichasAprovadas, nomeEstacao, zonas, onGravar }) {
-  if (!fichasAprovadas || fichasAprovadas.length === 0) {
+  // BUG CORRIGIDO (achado navegando o programa inteiro com o dossiê de
+  // exemplo, não num teste unitário): um dossiê com "aprovacoes" num
+  // formato incompatível (ex.: de uma versão antiga do formato, ou
+  // editado à mão) podia ter `dados.fichas` como algo que não é array —
+  // `!fichasAprovadas` é `false` pra qualquer objeto truthy, e
+  // `.length === 0` é `undefined === 0` (também false) quando o valor
+  // não tem `.length` — a guarda inteira passava direto pro `.map` mais
+  // abaixo, que quebrava com "fichasAprovadas.map is not a function" em
+  // vez de mostrar a mensagem "aprove as fichas primeiro". Checar
+  // Array.isArray explicitamente trata qualquer formato incompatível
+  // como "ainda não aprovado", nunca como crash.
+  if (!Array.isArray(fichasAprovadas) || fichasAprovadas.length === 0) {
     container.innerHTML = `<div class="vaziomsg">Aprove as fichas na fase 11 antes de montar os prompts.</div>`;
     return;
   }

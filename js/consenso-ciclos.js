@@ -24,6 +24,21 @@ function assinaturaFatia(fatia) {
 // Needleman-Wunsch: alinha duas sequências permitindo lacunas (uma ação
 // presente num ciclo e ausente no outro — F07-01: "aceitando que uma tenha
 // um item a mais ou a menos"). Devolve pares [idxA|null, idxB|null].
+//
+// PASSO — como a matriz `dp` funciona, pra quem não conhece o algoritmo.
+// dp[i][j] guarda a MELHOR pontuação possível alinhando os primeiros i
+// itens de `a` com os primeiros j itens de `b`. Cada célula só depende
+// das três vizinhas já calculadas (diagonal, cima, esquerda) — por isso
+// dá pra preencher a matriz inteira uma vez, sem re-testar combinação
+// nenhuma (é o que faz "programação dinâmica" ser rápido: O(n×m), não
+// exponencial). As três opções em cada célula são as três formas de ter
+// chegado até ali: "os itens i e j se alinham direto" (diagonal, ganha
+// pontuacaoIgual se forem a mesma assinatura, perde pontuacaoDiferente
+// se não), "o item i não tem par em b, vira lacuna" (cima), ou "o item j
+// não tem par em a, vira lacuna" (esquerda) — sempre a que dá a maior
+// pontuação acumulada. O traceback (mais abaixo) percorre a matriz do
+// canto oposto de volta à origem escolhendo, a cada passo, de qual das
+// três opções aquela célula veio — reconstituindo o alinhamento inteiro.
 export function alinharPar(a, b, { pontuacaoIgual = 2, pontuacaoDiferente = -1, pontuacaoLacuna = -1 } = {}) {
   const n = a.length;
   const m = b.length;
@@ -163,7 +178,15 @@ export function montarConsenso(porCiclo, listaCiclos, { corteMinimoPercentual = 
   const { colunas, cicloReferenciaIndice } = alinharCiclos(porCicloConsiderado);
   const frequencias = calcularFrequencias(colunas, porCicloConsiderado.length);
   const { nucleo, excecoes } = separarNucleoEExcecoes(colunas, frequencias, corteMinimoPercentual);
-  const cicloExemplarIndice = escolherCicloExemplar(porCicloConsiderado, listaCiclos, nucleo);
+  // BUG CORRIGIDO (achado numa revisão de código): a mediana de duração
+  // usada pra escolher o exemplar (dentro de escolherCicloExemplar) tem
+  // que vir só dos ciclos NÃO suspeitos, mesmo padrão de "excluir da
+  // tabela, não só destacar" que já vale pra `porCicloConsiderado" acima
+  // — passar `listaCiclos` inteira contaminava a mediana com a duração
+  // de ciclos justamente marcados suspeitos por serem atípicos (ritmo de
+  // partida mais lento, corte pelo fim do vídeo).
+  const ciclosConsideradosComDuracao = listaCiclos.filter((c) => !c.suspeito);
+  const cicloExemplarIndice = escolherCicloExemplar(porCicloConsiderado, ciclosConsideradosComDuracao, nucleo);
 
   return {
     ciclosConsiderados: [...indicesNaoSuspeitos],

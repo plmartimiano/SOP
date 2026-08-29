@@ -1155,6 +1155,118 @@ escondida tinha as 6 páginas com as imagens certas no `src`, prontas para
 quando a chamada de verdade acontecer. Nenhum erro de página em nenhum
 passo.
 
+## Revisão de qualidade de ponta a ponta (fases 00–15 + app.js)
+
+Depois de fechar o pipeline inteiro (fase 15), fiz uma rodada de revisão
+dedicada, separada da implementação de cada pacote: reler todo o código já
+escrito com atenção adversarial, procurando bugs reais, inconsistências
+entre módulos parecidos, e lacunas que os testes existentes não cobriam —
+e comentar o raciocínio de cada decisão não óbvia diretamente no código,
+pra quem for ler depois entender o "porquê", não só o "o quê". Três
+revisões cobrindo grupos diferentes de arquivos (00–07, 08–11, 12–15 +
+`app.js`) encontraram, ao todo, 6 bugs reais — todos corrigidos, cada um
+com um teste de regressão que reproduz o cenário exato antes de aceitar a
+correção como certa. Registrados aqui em ordem de gravidade, não de
+descoberta:
+
+- **`js/fichas.js` — colisão de rótulo corrompia a ficha errada.** Dois
+  rótulos de núcleo podem ser a mesma string (duas verificações de
+  conferência sem leitura determinada viram literalmente
+  `"pausa_conferencia"` as duas). O código indexava o núcleo num `Map`
+  simples de string→entrada — a segunda ocorrência sobrescrevia a
+  primeira, e todo passo cujo rótulo colidisse recebia silenciosamente
+  os dados (mãos, ferramenta, **trecho de vídeo**) da entrada errada.
+  Grave porque é exatamente esse trecho de vídeo que a fase 11 mostra
+  como barreira de segurança — a pessoa validaria olhando o vídeo do
+  passo errado sem saber. Corrigido trocando o `Map` por uma fila por
+  rótulo, consumida na mesma ordem cronológica em que os rótulos
+  aparecem no núcleo (`fundirAteSeis` só funde vizinhos, nunca reordena,
+  então essa ordem é confiável).
+- **`js/fase11-ui.js` — a assinatura não revalidava os campos que ela
+  mesma deixa editar.** O botão "Assinar e gravar" só checava nome e
+  cargo; `criterioConclusao` e `risco` podiam ser apagados no formulário
+  e a aprovação era gravada mesmo assim — o valor vazio se propagava
+  calado pro prompt de ilustração (fase 12) e pro PDF final (fase 15,
+  "Conclusão: " e "Risco: " em branco na página impressa). Corrigido
+  revalidando o valor final (pós-edição) de cada ficha com o mesmo gate
+  que a fase 10 usa, bloqueando a assinatura com uma mensagem clara se
+  algum campo obrigatório ficou vazio.
+- **`api/_leitura-semantica-core.js` — objeto/ferramenta não eram
+  canonizados, só verbo e mão.** A resposta do modelo era validada contra
+  o glossário de forma insensível a maiúsculas, mas gravada com o
+  *casing* exato que o modelo devolveu. Como `js/consenso-ciclos.js` usa
+  `verbo:objeto` como assinatura de igualdade no alinhamento entre
+  ciclos, a mesma ação real lida em dois ciclos com *casing* diferente do
+  modelo virava duas assinaturas diferentes, derrubando silenciosamente
+  o bônus de combinação exata do alinhamento. Corrigido gravando sempre
+  o `nomeOficial` exato do item do glossário que bateu na comparação
+  normalizada, nunca o texto cru do modelo.
+- **`js/consenso-ciclos.js` — a mediana do ciclo exemplar usava a lista
+  de ciclos completa, não só os não suspeitos.** `escolherCicloExemplar`
+  já filtrava corretamente os ciclos candidatos, mas calculava a mediana
+  de duração (usada pra desempate) em cima de `listaCiclos` inteira —
+  contaminando o valor de referência com a duração de ciclos justamente
+  marcados suspeitos por serem atípicos (ritmo de partida mais lento,
+  corte pelo fim do vídeo). Corrigido filtrando os suspeitos antes de
+  calcular a mediana, mesmo princípio de "excluir da tabela, não só
+  destacar" que já valia pro resto da função.
+- **`js/geracao-imagens.js` — a cadeia quebrava silenciosamente se uma
+  âncora falhasse.** Se a variação-âncora de um passo (ou o
+  quadro-mestre) falhasse na geração, sua chave nunca entrava no mapa de
+  referências — e o elo seguinte, que a referenciava, recebia `null`
+  silenciosamente (o mesmo valor que o quadro-mestre legitimamente usa
+  por não ter referência nenhuma) e parecia ter rodado normalmente,
+  quebrando a consistência visual da cadeia sem nenhum aviso. Corrigido
+  marcando esses itens com `referenciaQuebrada: true`, que
+  `js/fase13-ui.js` agora mostra como um aviso visível no card da
+  imagem, mesmo quando a chamada em si teve sucesso técnico.
+- **`js/app.js` (fase 13) — dois problemas menores de UI.** O banner de
+  status sempre mostrava "ok" (verde) mesmo com falhas parciais,
+  inconsistente com a fase 14 no mesmo arquivo, que já trata isso
+  corretamente — corrigido pra usar "erro" quando nem tudo teve sucesso.
+  E "Gravar no dossiê" substituía o mapa de imagens da sessão inteiro a
+  cada clique — uma segunda rodada com menos sucessos apagava,
+  silenciosamente, imagens já bem-sucedidas de uma rodada anterior que
+  não vieram nesta — corrigido mesclando com o mapa anterior em vez de
+  substituir.
+- **`js/fase15-ui.js` — corrida entre o carregamento assíncrono da
+  imagem e o botão de baixar.** O canvas de cada página carrega a
+  imagem via `Image().onload` (assíncrono), mas o botão "Baixar PNG"
+  ficava clicável desde o primeiro render — clicar antes do `onload`
+  disparar baixava um PNG em branco (`canvas.toBlob` captura só o fundo
+  branco já pintado), sem erro nenhum visível. Corrigido fazendo
+  `desenharPaginaCanvas` devolver uma promise que só resolve depois do
+  desenho terminar, com o botão desabilitado até lá.
+
+Um sétimo problema, de natureza diferente dos seis acima (não veio da
+revisão de código, veio de **navegar o programa inteiro manualmente**
+depois, clicando em "Carregar exemplo fictício" e passando por todas as
+17 fases uma a uma): a fase 12 quebrava com `fichasAprovadas.map is not a
+function`. A causa raiz era o próprio `fixtures/dossie-exemplo.json` — a
+seção `aprovacoes` desse fixture foi escrita à mão no pacote 1.2.1,
+**muito antes** da fase 11 existir de verdade, com um formato fictício
+(`dados.fichas` como um objeto único, não uma lista) que nunca foi
+atualizado pra bater com o que a fase 11 realmente veio a produzir.
+`!fichasAprovadas || fichasAprovadas.length === 0` não pega esse caso — um
+objeto é truthy e `.length` nele é `undefined`, então a guarda passava
+direto pro `.map` que quebrava. Resolvido em duas camadas: (1) a guarda
+virou `!Array.isArray(fichasAprovadas) || ...` em `js/fase12-ui.js` e
+`js/fase15-ui.js`, tratando qualquer formato incompatível — deste
+fixture ou de um dossiê editado à mão por um usuário — como "ainda não
+aprovado", nunca como um crash; (2) a seção `aprovacoes` do fixture foi
+regenerada com o módulo real (`montarAprovacao`, de `js/validacao.js`),
+com seis fichas plausíveis coerentes com os nomes já usados no resto do
+exemplo, incluindo uma correção de risco (o passo 3, uma fusão duvidosa)
+pra também exemplificar o mecanismo de "original preservado ao lado da
+correção". Depois da correção, reabri o programa do zero, cliquei em
+"Carregar exemplo fictício" e visitei as 17 fases uma a uma: zero erros
+de página em todas elas, e a fase 12 mostrou os 7 prompts esperados com
+os títulos reais dos 6 passos do exemplo. As seções `reconhecimento` e
+`passos` do próprio fixture (não corrigidas nesta rodada) ainda carregam
+um formato mais antigo em alguns campos — não causa erro, só uma
+inconsistência cosmética no "Estado no dossiê" dessas duas fases; fica
+registrado como lacuna conhecida, não escondida.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - **Validar `api/leitura-semantica.js`, `api/gerar-imagem.js` e

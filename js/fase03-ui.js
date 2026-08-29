@@ -136,6 +136,11 @@ function desenharGrafico(canvasEl, curva) {
     return;
   }
 
+  // Escala vertical dinâmica (o pico real da curva, não o teto teórico de
+  // 255 de diferença de pixel) — um vídeo com pouco movimento desenharia
+  // uma linha quase reta encostada no fundo do canvas se a escala fosse
+  // fixa em 255; olhando o pico de VERDADE, a curva sempre usa a altura
+  // inteira do gráfico, ficando legível também nos vídeos mais parados.
   const valorMax = Math.max(1, ...curva.map((p) => Math.max(p.valorCru, p.valorSuavizado)));
   const x = (i) => margem + (i / (curva.length - 1)) * (w - margem * 2);
   const y = (v) => h - margem - (v / valorMax) * (h - margem * 2);

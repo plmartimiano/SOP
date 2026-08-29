@@ -126,15 +126,25 @@ export async function gerarTodasAsImagens(
   for (const elo of agruparEmElos(plano)) {
     await Promise.all(
       elo.map(async (item) => {
+        // BUG CORRIGIDO (achado numa revisão de código): se a
+        // variação-âncora de um elo falhar (onErro), sua chave nunca
+        // entra em imagensPorChave — e o elo seguinte, que a referencia,
+        // recebia `null` silenciosamente (o mesmo valor que o
+        // quadro-mestre legitimamente usa, por não ter referência
+        // nenhuma) e parecia ter rodado normalmente, quebrando a cadeia
+        // de consistência visual sem aviso nenhum. `referenciaQuebrada`
+        // sinaliza esse caso pra quem chama (js/fase13-ui.js) poder
+        // avisar, em vez de mostrar um card de "sucesso" comum.
+        const referenciaQuebrada = !!(item.referenciaDe && !imagensPorChave.has(item.referenciaDe));
         try {
           const imagemReferenciaBase64 = item.referenciaDe ? imagensPorChave.get(item.referenciaDe) || null : null;
           const resultado = await gerarUmaImagem({ prompt: item.prompt, imagemReferenciaBase64, seed: item.seed }, opcoesChamada);
           if (item.tipo === "quadroMestre" || item.variacao === 1) {
             imagensPorChave.set(chaveDoItem(item), resultado.imagemBase64);
           }
-          onResultado?.(item, resultado);
+          onResultado?.({ ...item, referenciaQuebrada }, resultado);
         } catch (e) {
-          onErro?.(item, e);
+          onErro?.({ ...item, referenciaQuebrada }, e);
         }
       })
     );

@@ -2,6 +2,21 @@
 // pipeline com processamento de verdade. Liga video-metadados.js (1.3.1) e
 // video-qualidade.js (1.3.2) ao DOM. Só é montado quando a fase 02 está
 // selecionada (ver js/app.js).
+//
+// PASSO — o <video> e o <canvas> ficam no HTML desta tela (display:none),
+// não são criados soltos em memória a cada upload. video-metadados.js
+// (lerVideo) precisa deles anexados ao documento pra alguns navegadores
+// disparar corretamente eventos como "loadedmetadata" e
+// requestVideoFrameCallback — um elemento nunca inserido no DOM às vezes
+// se comporta de forma inconsistente entre engines. São reaproveitados a
+// cada arquivo escolhido (o `src` é trocado), não recriados.
+//
+// O botão "Gravar" exige DUAS condições ao mesmo tempo — triagem.aprovado
+// (o vídeo passou na qualidade) E obterDossie() (existe onde gravar) —
+// porque nenhuma das duas sozinha basta: um vídeo aprovado sem dossiê
+// não tem onde ir, e um dossiê existente não deveria aceitar um vídeo
+// reprovado (a regra do organograma: "não se tenta salvar material ruim
+// adiante").
 
 import { lerVideo } from "./video-metadados.js";
 import { triarQualidade } from "./video-qualidade.js";

@@ -12,8 +12,18 @@
 
 import { buscarTempo } from "./video-metadados.js";
 
-// Devolve tanto o PNG (pra exibir) quanto o array plano de valores de cinza
-// (pra diferença quadro a quadro barata, sem decodificar PNG de volta).
+// PASSO — por que 64×64 (não maior, não menor) e por que devolver as
+// DUAS formas (dataUrl E cinzas) em vez de só uma. O tamanho: pequeno o
+// bastante pra centenas de frames de um vídeo de vários minutos caberem
+// em memória sem problema (é a mesma miniatura que vira a "fita" de
+// frames na fase 03 e a fonte de curva-movimento.js), grande o bastante
+// pra distinguir zonas diferentes da bancada quando dividida em regiões
+// (mapa-zonas.js → indicesDaZona). Devolver as duas formas evita um
+// custo real: se só o dataUrl (PNG) fosse guardado, calcular a diferença
+// de movimento entre dois frames exigiria decodificar o PNG de volta em
+// pixels a cada comparação — centenas de frames comparados par a par
+// tornaria isso caro. Calculando `cinzas` (um Float64Array plano) uma
+// vez, na hora da captura, curva-movimento.js só faz subtração de número.
 export function capturarMiniaturaCinza(videoEl, canvasEl, lado = 64) {
   canvasEl.width = lado;
   canvasEl.height = lado;

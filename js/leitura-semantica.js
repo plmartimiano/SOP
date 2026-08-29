@@ -8,6 +8,15 @@
 // do índice do frame-chave, pegando o vizinho anterior/seguinte na lista
 // de frames), o glossário, os verbos permitidos, e a zona que a mão
 // visitou nessa fronteira, se alguma zona foi identificada como causa.
+// Nota honesta sobre uma simplificação: só a PRIMEIRA zona envolvida
+// (zonasEnvolvidas[0]) vira contexto do prompt. Quando a causa é
+// "combinada" (a mão passou por uma zona de componente E uma de
+// ferramenta na mesma fronteira — ver classificarFronteira em
+// micro-acoes.js), a segunda zona é descartada aqui, e qual das duas
+// sobrevive depende só da ordem do array `zonas` do mapa, não de
+// relevância. Coberto por teste (tests/leitura-semantica-cliente.test.mjs)
+// como comportamento conhecido, não escondido — resolver isso de
+// verdade exigiria mandar as DUAS zonas como contexto no prompt.
 export function montarPayload(fatia, frames, { glossario, verbosPermitidos, zonas = [] }) {
   const indice = fatia.frameChave.indice;
   const idZonaEnvolvida = (fatia.zonasEnvolvidas || [])[0];

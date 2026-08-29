@@ -42,6 +42,12 @@ export function montarDeteccaoCiclos(container, { framesRodouNoDossie, frames, o
   function renderResultado(resultado) {
     const { ciclos, estimativa, matriz } = resultado;
 
+    // A matriz é desenhada mesmo quando não há período detectado — de
+    // propósito, não por sobra de código: ela é diagnóstico útil por si
+    // só. Uma matriz sem diagonais paralelas visíveis prova pra quem está
+    // olhando que o algoritmo não "errou" a detecção, é o vídeo mesmo que
+    // não tem repetição — diferença importante pra quem for decidir se
+    // regrava o vídeo ou se investiga o código.
     if (!estimativa) {
       resultadoEl.innerHTML = `
         <div class="status show erro">Nenhum padrão repetitivo detectado neste vídeo. Sem repetição, não há como validar o que é procedimento — grave o vídeo de novo com pelo menos 3 a 5 repetições completas do ciclo.</div>

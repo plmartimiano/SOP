@@ -37,11 +37,37 @@ function distintos(lista) {
 // (fase 07). cicloExemplarIndice: reconhecimento.cicloExemplarIndice
 // (fase 07).
 export function gerarFichas(passos, nucleo, cicloExemplarIndice) {
-  const porAcao = new Map(nucleo.map((entrada) => [entrada.acao, entrada]));
+  // BUG CORRIGIDO (achado numa revisão de código, não num teste): dois
+  // rótulos de núcleo podem ser a MESMA string — por exemplo duas
+  // verificações de conferência sem leitura determinada viram
+  // literalmente "pausa_conferencia" as duas (ver causaDaEntrada em
+  // agrupamento.js, usada como `.acao` quando a leitura não identificou
+  // um verbo). Um Map simples de string→entrada perderia a segunda
+  // ocorrência (a última sobrescreve a primeira no Map), e todo passo
+  // cujo rótulo colidisse pegaria silenciosamente os dados (mãos,
+  // ferramenta, TRECHO DE VÍDEO) da entrada errada — grave porque é
+  // exatamente esse trecho de vídeo que a fase 11 mostra como barreira
+  // de segurança. Como `nucleo` está em ordem cronológica e cada label
+  // de `origem` é consumido na mesma ordem em que aparece nele
+  // (fundirAteSeis só funde vizinhos, nunca reordena — ver
+  // js/agrupamento.js), uma FILA por rótulo, consumida em ordem,
+  // resolve a colisão sem ambiguidade: a primeira "pausa_conferencia"
+  // do núcleo vai para a primeira ocorrência do rótulo em `origem`, a
+  // segunda para a segunda, e assim por diante.
+  const filasPorAcao = new Map();
+  for (const entrada of nucleo) {
+    if (!filasPorAcao.has(entrada.acao)) filasPorAcao.set(entrada.acao, []);
+    filasPorAcao.get(entrada.acao).push(entrada);
+  }
+  function consumirEntrada(label) {
+    const fila = filasPorAcao.get(label);
+    return fila && fila.length ? fila.shift() : undefined;
+  }
+
   const pecasInstaladas = new Set();
 
   return passos.map((passo) => {
-    const resolucoes = passo.origem.map((label) => localizarFatia(porAcao.get(label), cicloExemplarIndice));
+    const resolucoes = passo.origem.map((label) => localizarFatia(consumirEntrada(label), cicloExemplarIndice));
     const origemIncompleta = resolucoes.some((r) => !r.fatia);
     const usouCicloAlternativo = resolucoes.some((r) => r.usouCicloAlternativo);
     const fatias = resolucoes.map((r) => r.fatia).filter(Boolean);

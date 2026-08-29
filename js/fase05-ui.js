@@ -56,6 +56,12 @@ export function montarFatiamento(container, { ciclosRodouNoDossie, frames, ciclo
 
     const blocos = porCiclo
       .map((c) => {
+        // 6–15 é a faixa que o plano original espera pra fatias DENTRO
+        // de um ciclo de montagem real (bem mais granular que os "seis
+        // passos" finais do SOP — as fatias ainda vão ser fundidas em
+        // grupos maiores lá na frente, fases 08/09). Não é bloqueante:
+        // um vídeo curto de teste normalmente cai fora dela, e isso é
+        // esperado, não um erro — daí o aviso, não o erro, na tela.
         const total = c.fatias.length;
         const foraDaFaixa = total < 6 || total > 15;
         const linhas = c.fatias

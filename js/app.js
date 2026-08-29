@@ -2,6 +2,29 @@
 // fases (1.2.4) aos controles de index.html. A navegação usa o hash da URL
 // (#fase-08) para que voltar/avançar no navegador e recarregar a página
 // mantenham a fase selecionada — sem framework, sem build.
+//
+// PASSO 1 — o padrão que se repete em cada bloco `if (fase.numero === "NN")`
+// de renderPainel, mais abaixo neste arquivo: (a) ler do dossiê os dados
+// que a tela daquela fase precisa (via obterVersaoAtual — a última
+// versão de uma seção — ou obterVersaoComCampo quando a seção é
+// compartilhada com outra fase, ver PASSO 2); (b) chamar a função
+// montarXxx do módulo fase-ui.js correspondente, passando esses dados
+// mais um `onGravar` que chama adicionarVersao e depois renderTudo() pra
+// atualizar a tela inteira. Nenhum bloco de fase toca em DOM diretamente
+// — isso é responsabilidade exclusiva de cada faseNN-ui.js.
+//
+// PASSO 2 — obterVersaoComCampo (função abaixo, perto de faseRodou)
+// existe porque duas seções do dossiê são gravadas por DUAS fases
+// diferentes com formatos incompatíveis: "reconhecimento" (fase 07 grava
+// `nucleo`, fase 08 grava `regraHomologada`) e "imagens" (fase 13 grava
+// `itens`, fase 14 grava `notas`/`ordem`/`continuidades`). Pegar sempre
+// "a versão mais recente da seção" devolveria o dado da fase ERRADA
+// assim que as duas tivessem rodado — obterVersaoComCampo varre o
+// histórico de trás pra frente até achar a última versão que tem o
+// campo certo (declarado em `campoDistintivo`, ver js/fases.js). Cada
+// bloco de fase que lê uma dessas duas seções usa essa função em vez de
+// obterVersaoAtual; os outros blocos (a maioria) não precisam, porque
+// sua seção só é escrita por uma fase.
 
 import { criarDossieVazio, adicionarVersao, obterVersaoAtual, obterHistorico, SECOES } from "./dossie.js";
 import { exportarDossie, importarDossieDeArquivo, ErroImportacao } from "./dossie-io.js";
@@ -363,10 +386,28 @@ function renderPainel() {
       onGravar: (dadosImagens, mapaImagens) => {
         if (!dossie) return;
         adicionarVersao(dossie, "imagens", dadosImagens, { origem: "fase 13 (geração das imagens)" });
-        definirImagensGeradas(mapaImagens);
+        // BUG CORRIGIDO: gravar aqui recriava o Map de imagens da sessão
+        // do zero, então uma segunda rodada com menos sucessos (ex.:
+        // regerando só alguns itens após instabilidade de rede) apagava
+        // silenciosamente as imagens já bem-sucedidas de uma rodada
+        // anterior que não vieram nesta. Mesclar preserva o que já
+        // existia; itens regenerados com sucesso sobrescrevem a versão
+        // antiga da mesma chave, o que é o comportamento desejado.
+        const mapaAnterior = obterImagensGeradas();
+        const mapaMesclado = new Map(mapaAnterior || []);
+        for (const [chave, valor] of mapaImagens) mapaMesclado.set(chave, valor);
+        definirImagensGeradas(mapaMesclado);
         renderTudo();
         const sucesso = dadosImagens.itens.filter((i) => i.sucesso).length;
-        mostrarStatus(`${sucesso} de ${dadosImagens.itens.length} imagens geradas e gravadas no dossiê (metadados) e na sessão (imagens em si).`, "ok");
+        const total = dadosImagens.itens.length;
+        // BUG CORRIGIDO: este banner sempre mostrava "ok" (verde), mesmo
+        // com falhas parciais — inconsistente com a fase 14 no mesmo
+        // arquivo, que já usa "erro" quando o resultado não é
+        // inteiramente bom.
+        mostrarStatus(
+          `${sucesso} de ${total} imagens geradas e gravadas no dossiê (metadados) e na sessão (imagens em si).`,
+          sucesso === total ? "ok" : "erro"
+        );
       },
     });
   }

@@ -17,6 +17,7 @@
 // uma aprovação gravada em "aprovacoes" antes de rodar.
 
 import { calcularCorrecoes, validarAssinatura, montarAprovacao } from "./validacao.js";
+import { verificarCamposObrigatorios } from "./fichas.js";
 
 // container: elemento onde a ferramenta é desenhada.
 // fichas: passos (dossiê, versão atual, já no formato da fase 10) ou null.
@@ -32,12 +33,19 @@ export function montarValidacao(container, { fichas, video, onGravar }) {
     return;
   }
 
+  // Uma única URL de blob para o vídeo inteiro, reusada pelos 6 <video>
+  // (não uma por cartão) — criar seis URLs pro mesmo File é desperdício
+  // sem motivo, e nenhuma delas jamais era revogada. Ainda fica viva
+  // enquanto a tela existir (os elementos <video> continuam
+  // referenciando-a), o que é o comportamento correto aqui.
+  const videoUrl = video ? URL.createObjectURL(video.file) : null;
+
   container.innerHTML = `
     <p class="grafico-legenda">Corrija o que precisar — o valor original da fase 10 fica preservado ao lado
       de qualquer correção. O campo <b>risco</b> nunca foi avaliado automaticamente: é o mais importante de
       revisar aqui antes de assinar.</p>
     <div class="fichas-grid" id="fichasValidacao">
-      ${fichas.map((f) => cartaoValidacao(f, video)).join("")}
+      ${fichas.map((f) => cartaoValidacao(f, videoUrl)).join("")}
     </div>
     <div class="mapa-form" style="margin-top:14px">
       <h4 style="margin:0 0 8px">Assinar aprovação</h4>
@@ -79,10 +87,29 @@ export function montarValidacao(container, { fichas, video, onGravar }) {
     }
 
     const correcoesPorNumero = {};
+    const valoresFinaisPorNumero = {};
     for (const f of fichas) {
       const valoresFinais = lerValoresEditados(container, f.numero);
+      valoresFinaisPorNumero[f.numero] = valoresFinais;
       const correcoes = calcularCorrecoes(f, valoresFinais);
       if (Object.keys(correcoes).length) correcoesPorNumero[f.numero] = correcoes;
+    }
+
+    // BUG CORRIGIDO: a pessoa podia apagar criterioConclusao ou risco no
+    // formulário e ainda assinar — só nome/cargo eram checados antes.
+    // Um campo obrigatório vazio aqui se propagaria calado pro prompt de
+    // ilustração (fase 12) e pro PDF final (fase 15, "Conclusão: " /
+    // "Risco: " em branco). Revalida o valor FINAL (pós-edição) de cada
+    // ficha com o mesmo gate que a fase 10 usa — mesmo princípio de
+    // "nenhum campo obrigatório vazio" aplicado de novo, depois que a
+    // pessoa teve a chance de esvaziar algo sem querer.
+    const camposFaltandoPorFicha = fichas
+      .map((f) => ({ numero: f.numero, faltando: verificarCamposObrigatorios({ ...f, ...valoresFinaisPorNumero[f.numero] }) }))
+      .filter((r) => r.faltando.length > 0);
+    if (camposFaltandoPorFicha.length) {
+      const detalhe = camposFaltandoPorFicha.map((r) => `passo ${r.numero}: ${r.faltando.join(", ")}`).join("; ");
+      container.querySelector("#validacaoErro").innerHTML = `<div class="status show erro">Campo obrigatório vazio depois da edição — ${detalhe}. Preencha antes de assinar.</div>`;
+      return;
     }
 
     const dadosAprovacao = montarAprovacao(fichas, correcoesPorNumero, { nome, cargo });
@@ -108,11 +135,11 @@ function lerValoresEditados(container, numero) {
   };
 }
 
-function cartaoValidacao(f, video) {
+function cartaoValidacao(f, videoUrl) {
   const trecho = f.trechoVideo;
   const videoHtml =
-    video && trecho
-      ? `<video id="video-passo-${f.numero}" src="${URL.createObjectURL(video.file)}" controls style="width:100%;max-height:160px;background:#000;display:block;margin-bottom:8px"></video>`
+    videoUrl && trecho
+      ? `<video id="video-passo-${f.numero}" src="${videoUrl}" controls style="width:100%;max-height:160px;background:#000;display:block;margin-bottom:8px"></video>`
       : `<p class="grafico-legenda">${
           trecho
             ? `Vídeo não disponível nesta sessão — mostrando só o trecho: ${trecho.inicioSegundos}s – ${trecho.fimSegundos}s.`

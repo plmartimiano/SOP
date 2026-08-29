@@ -13,6 +13,18 @@ export function lerMetadadosBasicos(videoEl) {
   };
 }
 
+// PASSO — por que medir fps decodificando de verdade, em vez de confiar
+// nos metadados do contêiner MP4 (que às vezes trazem um "frame rate
+// nominal" impreciso, ou nem trazem nada de jeito acessível via API do
+// navegador). requestVideoFrameCallback dispara exatamente uma vez por
+// quadro DECODIFICADO — contar quantas vezes ele disparou num intervalo
+// de tempo real (metadata.mediaTime, o relógio do próprio vídeo, não
+// Date.now()) dá o fps de verdade que o navegador está entregando,
+// mesmo se o arquivo mentir sobre si mesmo ou a decodificação for mais
+// lenta que o nominal. O preço é que o vídeo precisa ser reproduzido de
+// verdade (daí videoEl.play()) por um intervalo (`janelaMs`, 1s por
+// padrão) — inevitável pra medir algo que só existe durante reprodução.
+//
 // Conta quadros de verdade decodificados num intervalo curto. Sem
 // requestVideoFrameCallback (Firefox, Safari antigo) devolve null — a
 // triagem trata fps desconhecido como aviso, não como recusa. Um vídeo mais
@@ -73,7 +85,13 @@ export function buscarTempo(videoEl, tempoSegundos) {
 }
 
 // Luminância média (0–255) de um frame amostrado em miniatura — barato,
-// mesmo espírito das miniaturas 64×64 da fase 03 (F03-02).
+// mesmo espírito das miniaturas 64×64 da fase 03 (F03-02). Os pesos
+// 0.299/0.587/0.114 em R/G/B (não uma média simples dos três) vêm da
+// fórmula padrão de luminância perceptual (ITU-R BT.601): o olho humano
+// é muito mais sensível a variação de verde que de azul, então pesar
+// igual sub/superestimaria o quão "clara" a cena realmente parece pra
+// uma pessoa — e é exatamente disso que a triagem de "vídeo escuro"
+// precisa (video-qualidade.js), não de um brilho matematicamente médio.
 export function medirLuminanciaMedia(videoEl, canvasEl) {
   const w = 64;
   const h = 64;

@@ -68,8 +68,18 @@ export function montarGeracaoImagens(container, { prompts, aprovacaoExiste, onGr
           progressoEl.textContent = `${feitos} / ${plano.length}`;
           const chave = chaveUnicaDoItem(item);
           mapaImagens.set(chave, { imagemBase64: resultado.imagemBase64, mimeType: resultado.mimeType || "image/png" });
-          itensMeta.set(chave, { ...semPrompt(item), sucesso: true, tamanhoBytes: Math.round((resultado.imagemBase64.length * 3) / 4) });
-          atualizarCartao(chave, resultado, null);
+          itensMeta.set(chave, {
+            ...semPrompt(item),
+            sucesso: true,
+            tamanhoBytes: Math.round((resultado.imagemBase64.length * 3) / 4),
+          });
+          // Chamada teve sucesso, mas se a variação-âncora do elo
+          // anterior falhou, esta imagem foi gerada SEM a referência
+          // esperada (ver referenciaQuebrada em geracao-imagens.js) —
+          // ainda assim "sucesso" tecnicamente, mas a cadeia de
+          // consistência visual quebrou a partir daqui. Avisa em vez de
+          // mostrar como um card normal.
+          atualizarCartao(chave, resultado, null, item.referenciaQuebrada);
         },
         onErro: (item, erro) => {
           feitos++;
@@ -84,12 +94,14 @@ export function montarGeracaoImagens(container, { prompts, aprovacaoExiste, onGr
     botaoEl.disabled = false;
 
     const falhas = [...itensMeta.values()].filter((m) => !m.sucesso).length;
+    const comReferenciaQuebrada = [...itensMeta.values()].filter((m) => m.referenciaQuebrada).length;
     const rodapeEl = document.createElement("div");
     rodapeEl.className = "row";
     rodapeEl.style.marginTop = "12px";
     rodapeEl.innerHTML = `
       <button class="act" id="gerarGravar">Gravar no dossiê</button>
-      ${falhas > 0 ? `<span class="mono" style="font-size:12px;color:var(--alert)">${falhas} de ${plano.length} falharam</span>` : ""}`;
+      ${falhas > 0 ? `<span class="mono" style="font-size:12px;color:var(--alert)">${falhas} de ${plano.length} falharam</span>` : ""}
+      ${comReferenciaQuebrada > 0 ? `<span class="mono" style="font-size:12px;color:var(--alert)">${comReferenciaQuebrada} geradas sem a referência esperada (cadeia quebrada)</span>` : ""}`;
     resultadoEl.appendChild(rodapeEl);
 
     rodapeEl.querySelector("#gerarGravar").addEventListener("click", () => {
@@ -97,14 +109,17 @@ export function montarGeracaoImagens(container, { prompts, aprovacaoExiste, onGr
     });
   });
 
-  function atualizarCartao(chave, resultado, erro) {
+  function atualizarCartao(chave, resultado, erro, referenciaQuebrada = false) {
     const el = resultadoEl.querySelector(`#img-${cssId(chave)}`);
     if (!el) return;
     if (erro) {
       el.querySelector(".imagem-corpo").innerHTML = `<div class="status show erro">${erro.message}</div>`;
-    } else {
-      el.querySelector(".imagem-corpo").innerHTML = `<img src="data:${resultado.mimeType || "image/png"};base64,${resultado.imagemBase64}" alt="">`;
+      return;
     }
+    const avisoReferencia = referenciaQuebrada
+      ? `<p class="status show erro" style="margin-top:6px">Gerada sem a referência esperada — a variação-âncora anterior da cadeia falhou. A consistência visual pode ter quebrado a partir daqui.</p>`
+      : "";
+    el.querySelector(".imagem-corpo").innerHTML = `<img src="data:${resultado.mimeType || "image/png"};base64,${resultado.imagemBase64}" alt="">${avisoReferencia}`;
   }
 }
 

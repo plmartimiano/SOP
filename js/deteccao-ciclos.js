@@ -5,6 +5,21 @@
 // marcados. A revisão visual com corte arrastável (F04-06 — "a pessoa
 // arrasta se estiver errado") não está implementada; é uma tela própria de
 // edição interativa, deixada para depois. Aqui só a detecção automática.
+//
+// PASSO — duas técnicas diferentes, cada uma resolvendo uma metade do
+// problema, e o motivo de precisar das duas. Autocorrelação
+// (estimarDuracaoCiclo) responde "qual é o período aproximado?" — rápida
+// (opera só sobre a curva 1D, já calculada), mas dá um número só, sem
+// dizer ONDE cada repetição realmente começa e termina (o ritmo do
+// operador varia ciclo a ciclo, então "todo ciclo tem exatamente X
+// segundos" seria uma mentira confortável). A matriz de auto-similaridade
+// + âncoras (matrizAutoSimilaridade, encontrarAncoras) resolve a segunda
+// metade: usa a estimativa de período só como PONTO DE PARTIDA de uma
+// janela de busca (± tolerância), e dentro dela procura a repetição de
+// verdade mais parecida — encontrando os cortes reais mesmo quando o
+// ritmo varia. detectarCiclos encadeia as duas: sem a primeira (nenhum
+// período detectável), a segunda nem roda — não faz sentido procurar
+// "onde a repetição está" se não há evidência de que existe repetição.
 
 import { diferencaMediaPixel } from "./curva-movimento.js";
 

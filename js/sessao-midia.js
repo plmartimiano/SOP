@@ -4,6 +4,24 @@
 // e no JSON só as referências e os tempos"). Recarregar a página perde isso;
 // é o mesmo comportamento que o rodapé do plano original já assume ("quadro
 // de leitura, não sistema de gestão").
+//
+// PASSO — por que três variáveis de módulo soltas, e não um objeto de
+// estado (ou uma "classe Sessao"). O projeto não usa nenhum framework de
+// estado (Redux, signals, etc.) — é DOM manipulado direto por cada
+// fase-ui.js. Um módulo ES importado sempre devolve a MESMA instância em
+// qualquer lugar do app (é assim que módulos funcionam nativamente),
+// então três `let` no topo do arquivo já dão exatamente a garantia de
+// "um valor só, compartilhado por toda a aba" que uma classe singleton
+// daria, com menos código pra ler. O preço dessa simplicidade é este
+// módulo ser stateful e mutável — aceitável porque o estado que ele
+// guarda É, por definição, coisa que só existe nesta sessão do
+// navegador; não faria sentido fingir imutabilidade aqui.
+//
+// Este módulo é consultado (obterVideoAprovado, obterFramesExtraidos,
+// obterImagensGeradas) por toda fase de 03 a 15 que depende de mídia
+// ainda estar na aba — e é exatamente a ausência desses dados aqui
+// (tudo `null`) que produz as mensagens "recarregue e reprocesse" /
+// "gere de novo nesta sessão" espalhadas pelas telas.
 
 let videoAprovado = null; // { file, dados } — o File do MP4 aprovado na fase 02
 let framesExtraidos = null; // [{ indice, tempoSegundos, miniaturaDataUrl }] — fase 03

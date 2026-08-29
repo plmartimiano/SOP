@@ -11,6 +11,19 @@
 const CAMPOS_OBRIGATORIOS = ["verbo", "objeto", "ferramenta", "mao", "pontoDeAplicacao", "confianca"];
 const MAOS_VALIDAS = ["esquerda", "direita", "ambas"];
 
+// PASSO — por que o glossário e os verbos são escritos por extenso dentro
+// do prompt a cada chamada, em vez de confiar no que o modelo "já sabe"
+// sobre montagem industrial em geral. O modelo não tem como saber que
+// ESTA estação específica chama uma peça de "Suporte L-32" e não de
+// outro jeito qualquer plausível — listar o vocabulário fechado (e
+// pedir pra escolher só dali) é o que faz `sanitizarResposta` conseguir
+// rejeitar com confiança o que sair da lista, em vez de aceitar
+// qualquer nome que "parece razoável". Mesma lógica pro trio de imagens
+// antes/chave/depois: uma imagem isolada do frame-chave já tem o
+// instante de maior movimento, mas o antes/depois dá contexto de
+// continuidade (o que estava acontecendo logo antes e logo depois) sem
+// custo adicional de chamada — as três imagens vão na MESMA requisição.
+
 // F06-01 + F06-02: entrega o trio de imagens (no chamador, não aqui — isto
 // só monta o texto), o glossário fechado, os verbos permitidos e — decisivo
 // — a zona que a mão visitou, como resposta pronta pro modelo confirmar ou
@@ -75,6 +88,22 @@ function sanitizarResposta(resposta, { verbosPermitidos, glossario }) {
     return { indeterminado: true, motivo: `verbo "${resposta.verbo}" fora da lista permitida` };
   }
 
+  // BUG CORRIGIDO (achado numa revisão de código): o objeto/ferramenta
+  // eram validados contra o glossário de forma insensível a maiúsculas
+  // (normalizar), mas gravados com o CASING CRU que o modelo devolveu —
+  // só verbo e mão eram canonizados. Como js/consenso-ciclos.js usa
+  // `verbo:objeto` como assinatura de igualdade no alinhamento entre
+  // ciclos, a mesma ação real lida em dois ciclos diferentes com casing
+  // diferente do modelo ("Suporte L-32" vs "suporte l-32" — as duas
+  // válidas pelo glossário) virava duas assinaturas DIFERENTES,
+  // derrubando silenciosamente o bônus de match exato do alinhamento.
+  // A correção: gravar sempre o nomeOficial EXATO do item do glossário
+  // que bateu na comparação normalizada — nunca o texto cru do modelo.
+  function nomeOficialCorrespondente(valor) {
+    const item = glossario.find((g) => normalizar(g.nomeOficial) === normalizar(valor));
+    return item ? item.nomeOficial : valor;
+  }
+
   const nomesConhecidos = glossario.map((g) => normalizar(g.nomeOficial));
   if (!nomesConhecidos.includes(normalizar(resposta.objeto))) {
     return { indeterminado: true, motivo: `objeto "${resposta.objeto}" não está no glossário desta estação` };
@@ -94,8 +123,8 @@ function sanitizarResposta(resposta, { verbosPermitidos, glossario }) {
 
   return {
     verbo: normalizar(resposta.verbo),
-    objeto: resposta.objeto,
-    ferramenta: normalizar(resposta.ferramenta) === "nenhuma" ? "nenhuma" : resposta.ferramenta,
+    objeto: nomeOficialCorrespondente(resposta.objeto),
+    ferramenta: normalizar(resposta.ferramenta) === "nenhuma" ? "nenhuma" : nomeOficialCorrespondente(resposta.ferramenta),
     mao: normalizar(resposta.mao),
     pontoDeAplicacao: String(resposta.pontoDeAplicacao),
     confianca: Math.round(confianca),

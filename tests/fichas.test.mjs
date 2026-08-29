@@ -96,3 +96,26 @@ test("verificarCamposObrigatorios acusa trechoVideo ausente quando a origem não
   };
   assert.deepEqual(verificarCamposObrigatorios(ficha), ["trechoVideo"]);
 });
+
+test("regressão: dois rótulos de núcleo idênticos (duas verificações sem leitura determinada) não colidem -- cada passo pega o trecho de vídeo certo, não o do outro", () => {
+  function fatia({ causa, objeto = "X", inicio, fim }) {
+    return { causa, leituraSemantica: { objeto, ferramenta: "nenhuma", mao: "direita" }, inicioSegundos: inicio, fimSegundos: fim };
+  }
+  // "pausa_conferencia" aparece duas vezes como .acao -- mesma string,
+  // entradas distintas do núcleo, em pontos diferentes do tempo.
+  const nucleo = [
+    { acao: "posicionar X", porCiclo: { 1: fatia({ causa: "componente_novo", inicio: 0, fim: 1 }) } },
+    { acao: "pausa_conferencia", porCiclo: { 1: fatia({ causa: "pausa_conferencia", inicio: 1, fim: 2 }) } },
+    { acao: "posicionar Y", porCiclo: { 1: fatia({ causa: "componente_novo", objeto: "Y", inicio: 2, fim: 3 }) } },
+    { acao: "pausa_conferencia", porCiclo: { 1: fatia({ causa: "pausa_conferencia", inicio: 3, fim: 4 }) } },
+  ];
+  const passos = [
+    { numero: 1, titulo: "p1", duracaoMediaSegundos: 1, duvidosa: false, origem: ["posicionar X"] },
+    { numero: 2, titulo: "p2", duracaoMediaSegundos: 1, duvidosa: false, origem: ["pausa_conferencia"] },
+    { numero: 3, titulo: "p3", duracaoMediaSegundos: 1, duvidosa: false, origem: ["posicionar Y"] },
+    { numero: 4, titulo: "p4", duracaoMediaSegundos: 1, duvidosa: false, origem: ["pausa_conferencia"] },
+  ];
+  const fichas = gerarFichas(passos, nucleo, 1);
+  assert.deepEqual(fichas[1].trechoVideo, { inicioSegundos: 1, fimSegundos: 2 }); // a PRIMEIRA pausa_conferencia
+  assert.deepEqual(fichas[3].trechoVideo, { inicioSegundos: 3, fimSegundos: 4 }); // a SEGUNDA, não a mesma de novo
+});

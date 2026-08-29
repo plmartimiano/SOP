@@ -4,6 +4,23 @@
 // imagem em tamanho real trafega aqui — o risco descrito em F01-01 ("um
 // dossiê de 300 MB trava o navegador") é evitado a montante, guardando nas
 // seções só referências e tempos, nunca os binários.
+//
+// PASSO 1 — o padrão de download (Blob + <a download> + click programático)
+// definido aqui em exportarDossie é reusado sem alteração, muitos pacotes
+// depois, por js/fase15-ui.js pra baixar cada página do SOP como PNG — é
+// o único jeito nativo do navegador de "salvar arquivo" sem servidor.
+// `doc` é parâmetro (default `document`) só pra este módulo continuar
+// testável no Node puro (tests/dossie.test.mjs passa um documento falso),
+// sem precisar de jsdom nem de um navegador de verdade pra um teste que é
+// só sobre a forma da string e do nome de arquivo.
+//
+// PASSO 2 — por que importar lança exceção em vez de devolver {valido:false}
+// como validarDossie faz. Import é uma ação do usuário (clicar "Carregar
+// dossiê") com um resultado binário claro: ou a tela continua com o
+// dossiê antigo e mostra o erro, ou troca pra o novo. Um throw (capturado
+// pela UI) deixa esse "ou isto ou aquilo" explícito no controle de fluxo,
+// em vez de espalhar `if (!resultado.valido) return` por todo lugar que
+// chama importar.
 
 import { validarDossie } from "./dossie-validar.js";
 

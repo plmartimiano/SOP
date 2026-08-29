@@ -147,3 +147,35 @@ test("gerarTodasAsImagens: erro numa variação não trava as outras nem o resto
   // o resto da cadeia (inclusive o passo 2, que depende da âncora do passo 1 -- não da variação que quebrou) segue normal
   assert.equal(resultados.length, 1 + PASSOS.length * 3 - 1);
 });
+
+test("regressão: quando a variação-âncora de um elo falha, o elo seguinte é marcado referenciaQuebrada -- não finge ter rodado normal", async () => {
+  const fetchImpl = async (url, opts) => {
+    const payload = JSON.parse(opts.body);
+    // falha exatamente a âncora do passo 1 (variação 1, seed 1010)
+    if (payload.seed === 1010) {
+      return { ok: false, status: 500, json: async () => ({ erro: "âncora falhou" }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ imagemBase64: `img-seed${payload.seed}` }) };
+  };
+  const resultados = [];
+  const erros = [];
+  await gerarTodasAsImagens({ quadroMestre: QUADRO_MESTRE, passos: PASSOS }, {
+    aprovacaoExiste: true,
+    fetchImpl,
+    tentativas: 1,
+    atrasoBaseMs: 1,
+    onResultado: (item, r) => resultados.push(item),
+    onErro: (item, e) => erros.push(item),
+  });
+  // a âncora do passo 1 (seed 1010) falhou -- reportada em onErro, sem referenciaQuebrada
+  // (ela mesma referencia o quadro-mestre, que funcionou)
+  const ancoraQuePassou1 = erros.find((i) => i.numero === 1 && i.variacao === 1);
+  assert.equal(ancoraQuePassou1.referenciaQuebrada, false);
+  // as variações 2 e 3 do passo 1 também referenciam o quadro-mestre (não a âncora do próprio passo 1) -- não afetadas
+  const outrasVariacoesPasso1 = resultados.filter((i) => i.numero === 1 && i.variacao !== 1);
+  assert.ok(outrasVariacoesPasso1.every((i) => i.referenciaQuebrada === false));
+  // TODAS as variações do passo 2 referenciam a âncora do passo 1, que falhou -- marcadas
+  const variacoesPasso2 = resultados.filter((i) => i.numero === 2);
+  assert.equal(variacoesPasso2.length, 3);
+  assert.ok(variacoesPasso2.every((i) => i.referenciaQuebrada === true));
+});

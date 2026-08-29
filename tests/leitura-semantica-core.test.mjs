@@ -50,6 +50,27 @@ test("sanitizarResposta aceita uma resposta bem formada", () => {
   assert.equal(r.confianca, 87);
 });
 
+test("regressão: sanitizarResposta canoniza objeto/ferramenta pro casing exato do glossário, não o casing cru do modelo", () => {
+  // Antes desta correção, objeto/ferramenta eram gravados com o texto
+  // exato que o modelo devolveu -- só validados de forma insensível a
+  // maiúsculas, nunca canonizados. Duas respostas pra mesma peça real,
+  // com casing diferente (plausível entre chamadas separadas ao
+  // modelo), geravam valores DIFERENTES -- quebrando silenciosamente o
+  // alinhamento por igualdade exata em js/consenso-ciclos.js.
+  const r1 = sanitizarResposta(
+    { verbo: "encaixar", objeto: "suporte l-32", ferramenta: "chave de torque", mao: "direita", pontoDeAplicacao: "x", confianca: 80 },
+    { verbosPermitidos: VERBOS, glossario: GLOSSARIO }
+  );
+  const r2 = sanitizarResposta(
+    { verbo: "encaixar", objeto: "SUPORTE L-32", ferramenta: "CHAVE DE TORQUE", mao: "direita", pontoDeAplicacao: "y", confianca: 90 },
+    { verbosPermitidos: VERBOS, glossario: GLOSSARIO }
+  );
+  assert.equal(r1.objeto, "Suporte L-32");
+  assert.equal(r1.ferramenta, "Chave de torque");
+  assert.equal(r1.objeto, r2.objeto); // mesmo casing exato do glossário, apesar do casing diferente na entrada
+  assert.equal(r1.ferramenta, r2.ferramenta);
+});
+
 test("sanitizarResposta repassa indeterminado do próprio modelo", () => {
   const r = sanitizarResposta({ indeterminado: true, motivo: "mão oclui a peça" }, { verbosPermitidos: VERBOS, glossario: GLOSSARIO });
   assert.equal(r.indeterminado, true);

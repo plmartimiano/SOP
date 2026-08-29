@@ -22,7 +22,10 @@ const ALTURA_PAGINA = 1100;
 // imagensGeradas: Map chaveUnicaDoItem -> {imagemBase64, mimeType} (sessao-midia.js) ou null.
 // nomeEstacao, versaoDossie: para o cabeçalho.
 export function montarDiagramacao(container, { fichasAprovadas, imagensGeradas, nomeEstacao, versaoDossie }) {
-  if (!fichasAprovadas || fichasAprovadas.length === 0) {
+  // BUG CORRIGIDO: mesmo problema e mesma correção de js/fase12-ui.js —
+  // um dossiê com "aprovacoes" em formato incompatível não pode passar
+  // por esta guarda e quebrar num .map mais abaixo.
+  if (!Array.isArray(fichasAprovadas) || fichasAprovadas.length === 0) {
     container.innerHTML = `<div class="vaziomsg">Aprove as fichas na fase 11 antes de diagramar o SOP.</div>`;
     return;
   }
@@ -59,8 +62,20 @@ export function montarDiagramacao(container, { fichasAprovadas, imagensGeradas, 
     <div id="areaImpressao" class="impressao-sop"></div>`;
 
   for (const pagina of paginas) {
-    desenharPaginaCanvas(container.querySelector(`#canvas-pagina-${pagina.numero}`), pagina, cabecalho);
-    container.querySelector(`#baixar-pagina-${pagina.numero}`).addEventListener("click", () => {
+    // BUG CORRIGIDO (achado numa revisão de código): o carregamento da
+    // imagem em desenharPaginaCanvas é assíncrono (img.onload), mas o
+    // botão "Baixar PNG" ficava clicável desde o primeiro render. Clicar
+    // antes do onload disparar baixava um PNG em branco (canvas.toBlob
+    // captura só o fundo branco já pintado, sem erro nenhum visível) —
+    // desenharPaginaCanvas agora devolve uma promise que só resolve
+    // depois do desenho terminar (com ou sem imagem), e o botão fica
+    // desabilitado até lá.
+    const botaoBaixarEl = container.querySelector(`#baixar-pagina-${pagina.numero}`);
+    botaoBaixarEl.disabled = true;
+    desenharPaginaCanvas(container.querySelector(`#canvas-pagina-${pagina.numero}`), pagina, cabecalho).then(() => {
+      botaoBaixarEl.disabled = false;
+    });
+    botaoBaixarEl.addEventListener("click", () => {
       baixarCanvasComoPng(container.querySelector(`#canvas-pagina-${pagina.numero}`), `sop-passo-${pagina.numero}.png`);
     });
   }
@@ -69,6 +84,9 @@ export function montarDiagramacao(container, { fichasAprovadas, imagensGeradas, 
   container.querySelector("#imprimirBotao").addEventListener("click", () => window.print());
 }
 
+// Devolve uma promise que resolve quando o canvas está de fato pronto pra
+// exportar (depois do onload da imagem, no caminho com imagem) — ver o
+// comentário no chamador sobre por que isso importa.
 function desenharPaginaCanvas(canvas, pagina, cabecalho) {
   const ctx = canvas.getContext("2d");
   const layout = calcularLayout(canvas.width, canvas.height);
@@ -93,20 +111,35 @@ function desenharPaginaCanvas(canvas, pagina, cabecalho) {
   }
 
   if (pagina.temImagem) {
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, canvas.width, layout.alturaImagem);
-      desenharTexto();
-    };
-    img.src = `data:${pagina.mimeType || "image/png"};base64,${pagina.imagemBase64}`;
-  } else {
-    ctx.fillStyle = "#C6C8C1";
-    ctx.fillRect(0, 0, canvas.width, layout.alturaImagem);
-    ctx.fillStyle = "#565A60";
-    ctx.font = "16px sans-serif";
-    ctx.fillText("(sem imagem gerada nesta sessão)", 16, layout.alturaImagem / 2);
-    desenharTexto();
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, layout.alturaImagem);
+        desenharTexto();
+        resolve();
+      };
+      img.onerror = () => {
+        // Base64 corrompido ou inválido — não trava o botão pra sempre;
+        // desenha um placeholder de erro e libera a exportação mesmo assim.
+        ctx.fillStyle = "#C6C8C1";
+        ctx.fillRect(0, 0, canvas.width, layout.alturaImagem);
+        ctx.fillStyle = "#B23A1E";
+        ctx.font = "16px sans-serif";
+        ctx.fillText("(erro ao carregar a imagem)", 16, layout.alturaImagem / 2);
+        desenharTexto();
+        resolve();
+      };
+      img.src = `data:${pagina.mimeType || "image/png"};base64,${pagina.imagemBase64}`;
+    });
   }
+
+  ctx.fillStyle = "#C6C8C1";
+  ctx.fillRect(0, 0, canvas.width, layout.alturaImagem);
+  ctx.fillStyle = "#565A60";
+  ctx.font = "16px sans-serif";
+  ctx.fillText("(sem imagem gerada nesta sessão)", 16, layout.alturaImagem / 2);
+  desenharTexto();
+  return Promise.resolve();
 }
 
 function baixarCanvasComoPng(canvas, nomeArquivo) {

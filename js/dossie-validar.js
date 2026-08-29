@@ -3,6 +3,25 @@
 // volta pode vir de outra versão do formato ou ter sido editado à mão, e o
 // erro precisa apontar o campo, não só dizer "inválido" (ver risco em F01-02:
 // "estrutura que muda toda semana").
+//
+// PASSO 1 — por que validação escrita à mão, e não uma lib de JSON Schema.
+// O projeto é sem build e sem dependência externa (mesma restrição que
+// levou fase15-ui.js a usar window.print() em vez de uma lib de PDF) —
+// puxar uma lib de schema exigiria empacotamento ou um CDN, nenhum dos
+// dois presente aqui. O dossiê também não é grande nem tem estrutura
+// profundamente aninhada — dez seções, cada uma uma lista de versões com
+// a mesma forma — então validar campo a campo é mais direto de ler do
+// que aprender a sintaxe de um schema pra um caso tão contido.
+//
+// PASSO 2 — por que "erro" e "aviso" são coisas diferentes, não um único
+// booleano válido/inválido. Um dossiê de versão de formato diferente, ou
+// com uma seção desconhecida, ainda dá pra abrir e trabalhar — só corre
+// o risco de ter campo faltando que este programa não sabe preencher.
+// Isso não deveria IMPEDIR a importação (bloquear teria o mesmo efeito
+// prático de perder o trabalho de quem gravou aquele dossiê), então vira
+// aviso, não erro. Já um dossiê sem `secoes.origemVideo.versoes` como
+// lista, por exemplo, não tem como ser lido de forma sã por nenhuma fase
+// — isso é erro de verdade, bloqueia a importação (ver dossie-io.js).
 
 import { FORMAT_VERSION, SECOES } from "./dossie.js";
 

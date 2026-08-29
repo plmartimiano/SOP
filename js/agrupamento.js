@@ -135,6 +135,19 @@ function fundirGrupos(a, b) {
 // nunca reordena, só funde vizinho com vizinho. Nunca funde um grupo
 // não-fundível (F09-04). Se sobrar só grupos não-fundíveis entre si, para
 // e sinaliza em vez de forçar.
+//
+// PASSO — por que só funde vizinho com vizinho, mesmo que duas ações
+// distantes no tempo sejam mais parecidas entre si do que qualquer par
+// de vizinhas. Um SOP é uma sequência de execução: o passo 3 tem que
+// vir depois do passo 2 na ordem real da montagem, sempre — fundir duas
+// ações que não são adjacentes no tempo criaria um "passo" cuja posição
+// no procedimento deixaria de corresponder à ordem cronológica real (a
+// ação do meio, deixada de fora da fusão, ficaria fora de ordem em
+// relação às duas que se fundiram ao redor dela). Restringir a fusão a
+// vizinhos imediatos é o que garante que os grupos finais, na ordem em
+// que aparecem no array, continuam sendo a ordem certa de execução —
+// sem essa restrição, o motor teria que resolver um problema de
+// reordenação inteiro à parte, não só de agrupamento.
 export function fundirAteSeis(acoesBase, calcularSimilaridade, maxGrupos = 6) {
   let grupos = acoesBase.map((a) => ({ ...a }));
   const custosDeFusao = [];

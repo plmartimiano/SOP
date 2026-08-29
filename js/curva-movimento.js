@@ -5,6 +5,18 @@
 // (F03-04) faz a mesma conta só nos pixels dentro do retângulo de cada
 // zona do mapa de zonas (mapa-zonas.js, pacote 1.1.2) — é o que revela
 // pra qual escaninho a mão foi, sem custo nenhum de modelo.
+//
+// PASSO — a ideia central que sustenta o resto do pipeline "barato" (as
+// fases 04 e 05, que rodam inteiramente sobre esta curva, sem custo de
+// modelo): num vídeo de montagem industrial, o que muda de pixel entre
+// dois frames vizinhos é, quase sempre, uma MÃO se movendo — pouco muda
+// quando a mão está parada (segurando, olhando, terminou uma etapa),
+// mesmo que a cena continue "acontecendo". Isso transforma "onde estão
+// as fronteiras entre ações" — um problema de visão computacional caro —
+// em "onde a curva de diferença de pixel tem um vale" — uma conta de
+// subtração. deteccao-ciclos.js usa os picos pra achar o período de
+// repetição; micro-acoes.js usa os vales pra achar as fronteiras dentro
+// de um ciclo.
 
 // Diferença média absoluta de pixel entre dois frames (0–255), olhando só
 // os índices dados (ou todos, se `indices` for omitido). Não exige que os
@@ -38,7 +50,13 @@ export function calcularCurvaMovimento(frames) {
 
 // Média móvel curta (F03-05): apaga ruído de compressão e tremidas mínimas
 // sem apagar pausas reais — janela pequena de propósito, não uma média de
-// todo o vídeo.
+// todo o vídeo. A janela é CENTRADA em cada ponto (metade pra trás, metade
+// pra frente — Math.floor/Math.ceil de tamanhoJanela/2), não só olhando
+// pra trás como uma média móvel de série financeira faria: um vale real
+// (mão parada) tipicamente dura mais de um frame, então suavizar olhando
+// só o passado deslocaria o vale suavizado pra depois de onde ele
+// realmente aconteceu — impreciso justamente no dado que a fase 05 usa
+// pra cortar as fronteiras entre ações.
 export function suavizarCurva(pontos, tamanhoJanela = 3) {
   return pontos.map((_, i) => {
     const inicio = Math.max(0, i - Math.floor(tamanhoJanela / 2));

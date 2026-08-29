@@ -100,6 +100,24 @@ test("montarConsenso exclui ciclos suspeitos — 'não usar no consenso' vira ex
   assert.equal(consenso.cicloReferenciaIndice, 2);
 });
 
+test("regressão: montarConsenso escolhe o exemplar pela mediana dos ciclos NÃO suspeitos, não a lista completa", () => {
+  // Aderência igual nos dois ciclos considerados (mesma única ação no
+  // núcleo) -- o desempate cai 100% na duração mais próxima da mediana.
+  // Mediana só dos NÃO suspeitos ([10, 20], correto) = 20 -> ciclo 3
+  // vence. Mediana da lista completa ([5, 10, 20], o bug antigo,
+  // contaminada pelo ciclo suspeito) = 10 -> ciclo 2 venceria em vez.
+  const c1 = { cicloIndice: 1, fatias: [fatia(1, "a", "X")] };
+  const c2 = { cicloIndice: 2, fatias: [fatia(1, "a", "X")] };
+  const c3 = { cicloIndice: 3, fatias: [fatia(1, "a", "X")] };
+  const listaCiclos = [
+    { indice: 1, suspeito: true, duracaoSegundos: 5 },
+    { indice: 2, suspeito: false, duracaoSegundos: 10 },
+    { indice: 3, suspeito: false, duracaoSegundos: 20 },
+  ];
+  const consenso = montarConsenso([c1, c2, c3], listaCiclos);
+  assert.equal(consenso.cicloExemplarIndice, 3);
+});
+
 test("montarConsenso com todos os ciclos limpos: X e Z no núcleo, Y na exceção", () => {
   const c1 = { cicloIndice: 1, fatias: [fatia(1, "a", "X"), fatia(2, "b", "Y"), fatia(3, "c", "Z")] };
   const c2 = { cicloIndice: 2, fatias: [fatia(1, "a", "X"), fatia(2, "c", "Z")] };

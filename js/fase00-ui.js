@@ -4,6 +4,24 @@
 // miniaturas — ver sessao-midia.js): fica só na memória desta montagem da
 // tela. Sair da fase e voltar limpa o desenho em andamento; zonas já
 // gravadas continuam no dossiê normalmente.
+//
+// PASSO 1 — o ciclo de coordenadas de uma zona: pixel do canvas (onde o
+// mouse arrastou) → normalizado 0–1 (o que é salvo, ver mapa-zonas.js) →
+// pixel de novo (pra redesenhar, já que o canvas pode ter sido
+// redimensionado desde a última vez — paraPixels multiplica de volta pela
+// largura/altura ATUAIS do canvas, não a de quando a zona foi criada).
+// Nunca se guarda pixel bruto em `zonas` — só o resultado de
+// paraNormalizado(retanguloPx) — exatamente pra essa reconversão em
+// desenharTudo funcionar mesmo que a imagem mude de escala.
+//
+// PASSO 2 — por que um limite de 8px em vez de zero pra distinguir
+// "arrastou" de "clicou sem querer". A mão humana não solta o mouse
+// exatamente onde apertou; um clique simples ainda produz um `mousedown`
+// e `mouseup` com uns poucos pixels de diferença. Sem esse limiar, um
+// clique acidental abriria o formulário de nova zona com um retângulo de
+// área quase nula — pior ainda, validarZona já rejeitaria isso mais
+// abaixo no fluxo, mas só depois de a pessoa preencher o formulário.
+// Cortar aqui, antes de abrir o formulário, poupa esse ciclo inteiro.
 
 import { TIPOS_ZONA, RETULO_TIPO_ZONA, validarZona, criarZona, renumerarZonas } from "./mapa-zonas.js";
 

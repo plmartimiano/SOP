@@ -1,11 +1,13 @@
-// Pacote EAP 1.4.1 — proxy para o Gemini.
+// Pacote EAP 1.4.1 — proxy para o Gemini. A PRIMEIRA das três funções
+// serverless do projeto (as outras duas vieram bem depois: fase 13 —
+// api/gerar-imagem.js — e fase 14 — api/verificar-imagem.js).
 //
 // Por que isto existe fora do navegador: a chave paga do Gemini nunca pode
 // aparecer em código que roda no cliente (qualquer um com o DevTools aberto
 // a veria e poderia gastar na conta). Esta função guarda a chave como
-// variável de ambiente do lado do servidor (Vercel) e é a ÚNICA parte do
-// projeto que sai do "100% no navegador" — deliberado, só para esta
-// chamada paga.
+// variável de ambiente do lado do servidor (Vercel) — junto com as outras
+// duas, são as únicas peças do projeto que saem do "100% no navegador",
+// deliberado, só pras três chamadas pagas.
 //
 // Variáveis de ambiente exigidas (configurar no painel do projeto na
 // Vercel, nunca commitadas no repositório):

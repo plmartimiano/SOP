@@ -16,10 +16,16 @@
           "dados": {
             "arquivoNome": "estacao4-piloto-2026-08-10.mp4",
             "duracaoSegundos": 612,
-            "resolucao": { "largura": 1920, "altura": 1080 },
+            "resolucao": {
+              "largura": 1920,
+              "altura": 1080
+            },
             "fps": 30,
             "orientacao": "horizontal",
-            "cortes": { "inicioSegundos": 8, "fimSegundos": 601 }
+            "cortes": {
+              "inicioSegundos": 8,
+              "fimSegundos": 601
+            }
           }
         }
       ]
@@ -31,14 +37,41 @@
           "data": "2026-08-10T09:00:00.000Z",
           "origem": "F00-03",
           "dados": {
-            "frameReferencia": { "tempoSegundos": 0 },
+            "frameReferencia": {
+              "tempoSegundos": 0
+            },
             "dataMapeamento": "2026-08-10",
             "zonas": [
-              { "id": "Z01", "nomeOficial": "Escaninho suporte L-32", "codigoInterno": "COMP-L32", "tipo": "escaninho" },
-              { "id": "Z02", "nomeOficial": "Escaninho parafuso M4x12", "codigoInterno": "COMP-M4X12", "tipo": "escaninho" },
-              { "id": "Z03", "nomeOficial": "Suporte da chave de torque", "codigoInterno": "FERR-TORQ-01", "tipo": "ferramenta" },
-              { "id": "Z04", "nomeOficial": "Área de trabalho", "codigoInterno": "AREA-01", "tipo": "area_trabalho" },
-              { "id": "Z05", "nomeOficial": "Saída para estação 5", "codigoInterno": "SAIDA-01", "tipo": "saida" }
+              {
+                "id": "Z01",
+                "nomeOficial": "Escaninho suporte L-32",
+                "codigoInterno": "COMP-L32",
+                "tipo": "escaninho"
+              },
+              {
+                "id": "Z02",
+                "nomeOficial": "Escaninho parafuso M4x12",
+                "codigoInterno": "COMP-M4X12",
+                "tipo": "escaninho"
+              },
+              {
+                "id": "Z03",
+                "nomeOficial": "Suporte da chave de torque",
+                "codigoInterno": "FERR-TORQ-01",
+                "tipo": "ferramenta"
+              },
+              {
+                "id": "Z04",
+                "nomeOficial": "Área de trabalho",
+                "codigoInterno": "AREA-01",
+                "tipo": "area_trabalho"
+              },
+              {
+                "id": "Z05",
+                "nomeOficial": "Saída para estação 5",
+                "codigoInterno": "SAIDA-01",
+                "tipo": "saida"
+              }
             ]
           }
         }
@@ -68,11 +101,43 @@
           "dados": {
             "total": 5,
             "lista": [
-              { "indice": 1, "inicioSegundos": 8, "fimSegundos": 128, "duracaoSegundos": 120, "suspeito": true, "motivoSuspeita": "primeiro ciclo, ritmo mais lento" },
-              { "indice": 2, "inicioSegundos": 128, "fimSegundos": 241, "duracaoSegundos": 113, "suspeito": false },
-              { "indice": 3, "inicioSegundos": 241, "fimSegundos": 356, "duracaoSegundos": 115, "suspeito": false },
-              { "indice": 4, "inicioSegundos": 356, "fimSegundos": 471, "duracaoSegundos": 115, "suspeito": false },
-              { "indice": 5, "inicioSegundos": 471, "fimSegundos": 601, "duracaoSegundos": 130, "suspeito": true, "motivoSuspeita": "último ciclo, interrompido" }
+              {
+                "indice": 1,
+                "inicioSegundos": 8,
+                "fimSegundos": 128,
+                "duracaoSegundos": 120,
+                "suspeito": true,
+                "motivoSuspeita": "primeiro ciclo, ritmo mais lento"
+              },
+              {
+                "indice": 2,
+                "inicioSegundos": 128,
+                "fimSegundos": 241,
+                "duracaoSegundos": 113,
+                "suspeito": false
+              },
+              {
+                "indice": 3,
+                "inicioSegundos": 241,
+                "fimSegundos": 356,
+                "duracaoSegundos": 115,
+                "suspeito": false
+              },
+              {
+                "indice": 4,
+                "inicioSegundos": 356,
+                "fimSegundos": 471,
+                "duracaoSegundos": 115,
+                "suspeito": false
+              },
+              {
+                "indice": 5,
+                "inicioSegundos": 471,
+                "fimSegundos": 601,
+                "duracaoSegundos": 130,
+                "suspeito": true,
+                "motivoSuspeita": "último ciclo, interrompido"
+              }
             ]
           }
         }
@@ -89,12 +154,60 @@
               {
                 "cicloIndice": 3,
                 "fatias": [
-                  { "indice": 1, "inicioSegundos": 241, "fimSegundos": 249, "causa": "componente_novo", "frameChave": { "tempoSegundos": 245 } },
-                  { "indice": 2, "inicioSegundos": 249, "fimSegundos": 261, "causa": "componente_novo", "frameChave": { "tempoSegundos": 254 } },
-                  { "indice": 3, "inicioSegundos": 261, "fimSegundos": 279, "causa": "troca_ferramenta", "frameChave": { "tempoSegundos": 268 } },
-                  { "indice": 4, "inicioSegundos": 279, "fimSegundos": 312, "causa": "troca_ferramenta", "frameChave": { "tempoSegundos": 297 } },
-                  { "indice": 5, "inicioSegundos": 312, "fimSegundos": 331, "causa": "pausa_conferencia", "frameChave": { "tempoSegundos": 320 } },
-                  { "indice": 6, "inicioSegundos": 331, "fimSegundos": 356, "causa": "componente_novo", "frameChave": { "tempoSegundos": 344 } }
+                  {
+                    "indice": 1,
+                    "inicioSegundos": 241,
+                    "fimSegundos": 249,
+                    "causa": "componente_novo",
+                    "frameChave": {
+                      "tempoSegundos": 245
+                    }
+                  },
+                  {
+                    "indice": 2,
+                    "inicioSegundos": 249,
+                    "fimSegundos": 261,
+                    "causa": "componente_novo",
+                    "frameChave": {
+                      "tempoSegundos": 254
+                    }
+                  },
+                  {
+                    "indice": 3,
+                    "inicioSegundos": 261,
+                    "fimSegundos": 279,
+                    "causa": "troca_ferramenta",
+                    "frameChave": {
+                      "tempoSegundos": 268
+                    }
+                  },
+                  {
+                    "indice": 4,
+                    "inicioSegundos": 279,
+                    "fimSegundos": 312,
+                    "causa": "troca_ferramenta",
+                    "frameChave": {
+                      "tempoSegundos": 297
+                    }
+                  },
+                  {
+                    "indice": 5,
+                    "inicioSegundos": 312,
+                    "fimSegundos": 331,
+                    "causa": "pausa_conferencia",
+                    "frameChave": {
+                      "tempoSegundos": 320
+                    }
+                  },
+                  {
+                    "indice": 6,
+                    "inicioSegundos": 331,
+                    "fimSegundos": 356,
+                    "causa": "componente_novo",
+                    "frameChave": {
+                      "tempoSegundos": 344
+                    }
+                  }
                 ]
               }
             ]
@@ -110,20 +223,41 @@
           "origem": "F08-05",
           "dados": {
             "componentes": [
-              { "nomeOficial": "Suporte L-32", "codigoInterno": "COMP-L32", "zonaId": "Z01" },
-              { "nomeOficial": "Parafuso M4x12", "codigoInterno": "COMP-M4X12", "zonaId": "Z02" }
+              {
+                "nomeOficial": "Suporte L-32",
+                "codigoInterno": "COMP-L32",
+                "zonaId": "Z01"
+              },
+              {
+                "nomeOficial": "Parafuso M4x12",
+                "codigoInterno": "COMP-M4X12",
+                "zonaId": "Z02"
+              }
             ],
             "ferramentas": [
-              { "nomeOficial": "Chave de torque", "codigoInterno": "FERR-TORQ-01", "tempoUsoSegundos": 41 }
+              {
+                "nomeOficial": "Chave de torque",
+                "codigoInterno": "FERR-TORQ-01",
+                "tempoUsoSegundos": 41
+              }
             ],
             "acoesEstaveis": 6,
             "verificacoes": [
-              { "descricao": "Conferência visual do encaixe", "naoFundivel": true }
+              {
+                "descricao": "Conferência visual do encaixe",
+                "naoFundivel": true
+              }
             ],
             "cicloDuracaoSegundos": 115,
             "alternativasAgrupamento": [
-              { "criterio": "por_ferramenta_compartilhada", "justificativa": "agrupa ações que usam a mesma ferramenta em sequência" },
-              { "criterio": "por_subconjunto_produto", "justificativa": "agrupa pela peça que está sendo montada" }
+              {
+                "criterio": "por_ferramenta_compartilhada",
+                "justificativa": "agrupa ações que usam a mesma ferramenta em sequência"
+              },
+              {
+                "criterio": "por_subconjunto_produto",
+                "justificativa": "agrupa pela peça que está sendo montada"
+              }
             ]
           }
         }
@@ -136,12 +270,36 @@
           "data": "2026-08-11T11:00:00.000Z",
           "origem": "F09-06",
           "dados": [
-            { "numero": 1, "titulo": "Posicionar o suporte L-32", "criterioDeConclusao": "suporte encostado no batente" },
-            { "numero": 2, "titulo": "Encaixar o parafuso M4x12", "criterioDeConclusao": "parafuso não gira mais à mão" },
-            { "numero": 3, "titulo": "Parafusar com a chave de torque", "criterioDeConclusao": "clique audível da chave" },
-            { "numero": 4, "titulo": "Conectar o conector J3", "criterioDeConclusao": "trava do conector engatada" },
-            { "numero": 5, "titulo": "Testar o encaixe", "criterioDeConclusao": "luz verde no testador de bancada" },
-            { "numero": 6, "titulo": "Transferir para a saída", "criterioDeConclusao": "peça na esteira de saída" }
+            {
+              "numero": 1,
+              "titulo": "Posicionar o suporte L-32",
+              "criterioDeConclusao": "suporte encostado no batente"
+            },
+            {
+              "numero": 2,
+              "titulo": "Encaixar o parafuso M4x12",
+              "criterioDeConclusao": "parafuso não gira mais à mão"
+            },
+            {
+              "numero": 3,
+              "titulo": "Parafusar com a chave de torque",
+              "criterioDeConclusao": "clique audível da chave"
+            },
+            {
+              "numero": 4,
+              "titulo": "Conectar o conector J3",
+              "criterioDeConclusao": "trava do conector engatada"
+            },
+            {
+              "numero": 5,
+              "titulo": "Testar o encaixe",
+              "criterioDeConclusao": "luz verde no testador de bancada"
+            },
+            {
+              "numero": 6,
+              "titulo": "Transferir para a saída",
+              "criterioDeConclusao": "peça na esteira de saída"
+            }
           ]
         },
         {
@@ -149,12 +307,36 @@
           "data": "2026-08-12T09:41:00.000Z",
           "origem": "F11-02 (correção da mesa de validação)",
           "dados": [
-            { "numero": 1, "titulo": "Posicionar o suporte L-32 na base", "criterioDeConclusao": "suporte encostado no batente" },
-            { "numero": 2, "titulo": "Encaixar o parafuso M4x12", "criterioDeConclusao": "parafuso não gira mais à mão" },
-            { "numero": 3, "titulo": "Parafusar com a chave de torque", "criterioDeConclusao": "clique audível da chave" },
-            { "numero": 4, "titulo": "Conectar o conector J3", "criterioDeConclusao": "trava do conector engatada" },
-            { "numero": 5, "titulo": "Testar o encaixe no testador", "criterioDeConclusao": "luz verde no testador de bancada" },
-            { "numero": 6, "titulo": "Transferir para a esteira de saída", "criterioDeConclusao": "peça na esteira de saída" }
+            {
+              "numero": 1,
+              "titulo": "Posicionar o suporte L-32 na base",
+              "criterioDeConclusao": "suporte encostado no batente"
+            },
+            {
+              "numero": 2,
+              "titulo": "Encaixar o parafuso M4x12",
+              "criterioDeConclusao": "parafuso não gira mais à mão"
+            },
+            {
+              "numero": 3,
+              "titulo": "Parafusar com a chave de torque",
+              "criterioDeConclusao": "clique audível da chave"
+            },
+            {
+              "numero": 4,
+              "titulo": "Conectar o conector J3",
+              "criterioDeConclusao": "trava do conector engatada"
+            },
+            {
+              "numero": 5,
+              "titulo": "Testar o encaixe no testador",
+              "criterioDeConclusao": "luz verde no testador de bancada"
+            },
+            {
+              "numero": 6,
+              "titulo": "Transferir para a esteira de saída",
+              "criterioDeConclusao": "peça na esteira de saída"
+            }
           ]
         }
       ]
@@ -172,11 +354,390 @@
           "data": "2026-08-12T09:41:00.000Z",
           "origem": "F11-04",
           "dados": {
-            "fichas": {
-              "aprovadoPor": "Marina Souza",
+            "fichas": [
+              {
+                "numero": 1,
+                "original": {
+                  "numero": 1,
+                  "titulo": "Posicionar o suporte L-32 na base",
+                  "duvidosa": false,
+                  "origem": [
+                    "posicionar Suporte L-32"
+                  ],
+                  "maos": [
+                    "esquerda"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [
+                    "Suporte L-32"
+                  ],
+                  "trechoVideo": {
+                    "inicioSegundos": 241,
+                    "fimSegundos": 254
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"posicionar Suporte L-32\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32"
+                  ]
+                },
+                "correcoes": {},
+                "final": {
+                  "numero": 1,
+                  "titulo": "Posicionar o suporte L-32 na base",
+                  "duvidosa": false,
+                  "origem": [
+                    "posicionar Suporte L-32"
+                  ],
+                  "maos": [
+                    "esquerda"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [
+                    "Suporte L-32"
+                  ],
+                  "trechoVideo": {
+                    "inicioSegundos": 241,
+                    "fimSegundos": 254
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"posicionar Suporte L-32\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32"
+                  ]
+                }
+              },
+              {
+                "numero": 2,
+                "original": {
+                  "numero": 2,
+                  "titulo": "Encaixar o parafuso M4x12",
+                  "duvidosa": false,
+                  "origem": [
+                    "encaixar Parafuso M4x12"
+                  ],
+                  "maos": [
+                    "direita"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [
+                    "Parafuso M4x12"
+                  ],
+                  "trechoVideo": {
+                    "inicioSegundos": 254,
+                    "fimSegundos": 261
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"encaixar Parafuso M4x12\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12"
+                  ]
+                },
+                "correcoes": {},
+                "final": {
+                  "numero": 2,
+                  "titulo": "Encaixar o parafuso M4x12",
+                  "duvidosa": false,
+                  "origem": [
+                    "encaixar Parafuso M4x12"
+                  ],
+                  "maos": [
+                    "direita"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [
+                    "Parafuso M4x12"
+                  ],
+                  "trechoVideo": {
+                    "inicioSegundos": 254,
+                    "fimSegundos": 261
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"encaixar Parafuso M4x12\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12"
+                  ]
+                }
+              },
+              {
+                "numero": 3,
+                "original": {
+                  "numero": 3,
+                  "titulo": "Parafusar com a chave de torque",
+                  "duvidosa": true,
+                  "origem": [
+                    "parafusar Suporte L-32",
+                    "parafusar Parafuso M4x12"
+                  ],
+                  "maos": [
+                    "direita"
+                  ],
+                  "ferramentas": [
+                    "Chave de torque"
+                  ],
+                  "pecas": [],
+                  "trechoVideo": {
+                    "inicioSegundos": 261,
+                    "fimSegundos": 312
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"parafusar Parafuso M4x12\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32",
+                    "Parafuso M4x12"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12"
+                  ]
+                },
+                "correcoes": {
+                  "risco": {
+                    "original": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                    "corrigido": "Risco de esmagamento dos dedos ao encaixar a chave de torque no encaixe combinado — usar luva de proteção."
+                  }
+                },
+                "final": {
+                  "numero": 3,
+                  "titulo": "Parafusar com a chave de torque",
+                  "duvidosa": true,
+                  "origem": [
+                    "parafusar Suporte L-32",
+                    "parafusar Parafuso M4x12"
+                  ],
+                  "maos": [
+                    "direita"
+                  ],
+                  "ferramentas": [
+                    "Chave de torque"
+                  ],
+                  "pecas": [],
+                  "trechoVideo": {
+                    "inicioSegundos": 261,
+                    "fimSegundos": 312
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"parafusar Parafuso M4x12\").",
+                  "risco": "Risco de esmagamento dos dedos ao encaixar a chave de torque no encaixe combinado — usar luva de proteção.",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32",
+                    "Parafuso M4x12"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12"
+                  ]
+                }
+              },
+              {
+                "numero": 4,
+                "original": {
+                  "numero": 4,
+                  "titulo": "Conectar o conector J3",
+                  "duvidosa": false,
+                  "origem": [
+                    "conectar Conector J3"
+                  ],
+                  "maos": [
+                    "direita"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [
+                    "Conector J3"
+                  ],
+                  "trechoVideo": {
+                    "inicioSegundos": 312,
+                    "fimSegundos": 320
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"conectar Conector J3\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32",
+                    "Parafuso M4x12"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3"
+                  ]
+                },
+                "correcoes": {},
+                "final": {
+                  "numero": 4,
+                  "titulo": "Conectar o conector J3",
+                  "duvidosa": false,
+                  "origem": [
+                    "conectar Conector J3"
+                  ],
+                  "maos": [
+                    "direita"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [
+                    "Conector J3"
+                  ],
+                  "trechoVideo": {
+                    "inicioSegundos": 312,
+                    "fimSegundos": 320
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"conectar Conector J3\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32",
+                    "Parafuso M4x12"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3"
+                  ]
+                }
+              },
+              {
+                "numero": 5,
+                "original": {
+                  "numero": 5,
+                  "titulo": "Testar o encaixe no testador",
+                  "duvidosa": false,
+                  "origem": [
+                    "testar Suporte L-32"
+                  ],
+                  "maos": [
+                    "ambas"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [],
+                  "trechoVideo": {
+                    "inicioSegundos": 320,
+                    "fimSegundos": 331
+                  },
+                  "criterioConclusao": "Verificado por conferência visual — este passo inclui uma ação de teste registrada.",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3"
+                  ]
+                },
+                "correcoes": {},
+                "final": {
+                  "numero": 5,
+                  "titulo": "Testar o encaixe no testador",
+                  "duvidosa": false,
+                  "origem": [
+                    "testar Suporte L-32"
+                  ],
+                  "maos": [
+                    "ambas"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [],
+                  "trechoVideo": {
+                    "inicioSegundos": 320,
+                    "fimSegundos": 331
+                  },
+                  "criterioConclusao": "Verificado por conferência visual — este passo inclui uma ação de teste registrada.",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3"
+                  ]
+                }
+              },
+              {
+                "numero": 6,
+                "original": {
+                  "numero": 6,
+                  "titulo": "Transferir para a esteira de saída",
+                  "duvidosa": false,
+                  "origem": [
+                    "transferir Produto"
+                  ],
+                  "maos": [
+                    "ambas"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [
+                    "Produto"
+                  ],
+                  "trechoVideo": {
+                    "inicioSegundos": 344,
+                    "fimSegundos": 356
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"transferir Produto\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3",
+                    "Produto"
+                  ]
+                },
+                "correcoes": {},
+                "final": {
+                  "numero": 6,
+                  "titulo": "Transferir para a esteira de saída",
+                  "duvidosa": false,
+                  "origem": [
+                    "transferir Produto"
+                  ],
+                  "maos": [
+                    "ambas"
+                  ],
+                  "ferramentas": [],
+                  "pecas": [
+                    "Produto"
+                  ],
+                  "trechoVideo": {
+                    "inicioSegundos": 344,
+                    "fimSegundos": 356
+                  },
+                  "criterioConclusao": "Concluído ao finalizar a última ação do passo (\"transferir Produto\").",
+                  "risco": "Não avaliado automaticamente — sem fonte de dado de risco no pipeline até aqui. Revisar na fase 11 (mesa de validação humana).",
+                  "estadoProdutoAntes": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3"
+                  ],
+                  "estadoProdutoDepois": [
+                    "Suporte L-32",
+                    "Parafuso M4x12",
+                    "Conector J3",
+                    "Produto"
+                  ]
+                }
+              }
+            ],
+            "aprovacao": {
+              "responsavel": "Marina Souza",
               "cargo": "Engenharia de processo",
               "dataHora": "2026-08-12T09:41:00.000Z",
-              "editado": true
+              "totalCorrecoes": 1
             }
           }
         }

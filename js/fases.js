@@ -4,7 +4,34 @@
 // lógica de análise mora aqui. Quando a fase 02 (ingestão de vídeo) for
 // implementada de verdade, o código dela lê este mesmo array para saber
 // qual tela ativar.
-
+//
+// PASSO 1 — por que dado estático num array, e não uma classe/registro
+// por fase. js/app.js itera sobre FASES pra montar a barra lateral inteira
+// (título, subtítulo, o ponto verde de "já rodou") antes mesmo de saber
+// se alguma fase tem código de UI implementado — as 17 entradas existem
+// desde o início do projeto (pacote 1.2.4), muito antes da fase 15 ser
+// escrita. Isso é deliberado: a navegação e a explicação de cada fase
+// (entra/sai/gate) existem independentemente de quanto da fase já foi
+// codificado, então quem abre o programa vê o mapa completo do pipeline
+// mesmo nas fases ainda não implementadas.
+//
+// PASSO 2 — o que cada campo da entrada de uma fase significa e quem lê:
+//   secaoDossie   — qual seção o "Estado no dossiê" (renderEstadoDaFase,
+//                   em app.js) consulta; null quando a fase não grava
+//                   nada no dossiê (fase 01, o container do dossiê em
+//                   si; fase 15, que só gera arquivo de saída; fase 16).
+//   campoDistintivo — só existe quando DUAS fases compartilham a mesma
+//                   secaoDossie com formatos incompatíveis (07/08 em
+//                   "reconhecimento", 13/14 em "imagens") — diz a
+//                   app.js qual campo prova "esta versão é da MINHA
+//                   fase, não da outra que escreve aqui". Ver
+//                   obterVersaoComCampo em app.js pro mecanismo.
+//   notaSecao     — texto livre mostrado na tela, pra documentar pra
+//                   quem está USANDO o programa (não só quem lê o
+//                   código) uma simplificação ou limitação daquela
+//                   fase — o mesmo espírito de honestidade que rege
+//                   todo o README, só que dentro do produto.
+//
 // tipo espelha a classificação de custo/decisão do organograma:
 // "padrao" = automático no navegador, sem custo | "pago" = chamada de
 // modelo | "humano" = decisão humana obrigatória.
