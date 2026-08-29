@@ -684,33 +684,46 @@ problema, com a mesma solução.
 A solução adotada é o menor desvio possível dessa regra: três funções
 serverless na Vercel (`api/leitura-semantica.js` para a fase 06,
 `api/gerar-imagem.js` para a fase 13, `api/verificar-imagem.js` para a
-fase 14), não um backend de verdade. As três guardam a chave como
-variável de ambiente do servidor — nunca num arquivo do projeto, nunca no
-navegador — e são as únicas peças que saem do "100% client-side". Todo o
-resto (fases 00 a 05, 07 a 12, o dossiê, a navegação) continua
-exatamente como estava.
+fase 14), não um backend de verdade. As três autenticam do lado do
+servidor — nunca num arquivo do projeto, nunca no navegador — e são as
+únicas peças que saem do "100% client-side". Todo o resto (fases 00 a 05,
+07 a 12, o dossiê, a navegação) continua exatamente como estava.
+
+**Atualizado em 2026-08-29 (cartão de handoff):** o cliente confirmou que
+usa Gemini via **Vertex AI** (projeto do Google Cloud + conta de serviço,
+`genai.Client(vertexai=True, project=PROJECT_ID, location="global")`), não
+a Gemini Developer API com uma chave simples que as três funções usavam
+até essa data. A troca já foi feita no código — ver `api/_auth-vertex.js`
+para o porquê e o fluxo de autenticação (JWT bearer de conta de serviço,
+sem nenhuma dependência nova, só `crypto` nativo do Node). Não existe mais
+uma `GEMINI_API_KEY` única.
 
 **Para rodar isso de verdade:**
 1. Publicar o projeto na Vercel (conectar o repositório, deploy automático
    a cada push).
-2. Configurar `GEMINI_API_KEY` (obrigatória, compartilhada pelas três
-   funções) e, se precisar, `GEMINI_MODEL` (fases 06 e 14 — o modelo de
-   visão) e `GEMINI_IMAGE_MODEL` (fase 13 — o modelo de imagem) no painel
-   do projeto — ver `.env.example` para o que cada uma faz. **O nome
-   exato dos dois modelos da conta paga não foi confirmado, em nenhum dos
-   dois casos**: o ambiente onde este código foi escrito não tem acesso
-   de rede a domínios do Google, então os valores padrão embutidos no
-   código são palpites razoáveis, não fatos verificados. Confirme os dois
-   no Google AI Studio antes de configurar em produção.
+2. Configurar no painel do projeto: `GOOGLE_SERVICE_ACCOUNT_JSON` (o
+   arquivo JSON inteiro da conta de serviço), `GOOGLE_CLOUD_PROJECT` (o
+   `PROJECT_ID` do cliente) e, se precisar, `GOOGLE_CLOUD_LOCATION`
+   (padrão `global`, já confirmado), `GEMINI_MODEL` (fases 06 e 14 — o
+   modelo de visão) e `GEMINI_IMAGE_MODEL` (fase 13 — o modelo de
+   imagem) — ver `.env.example` para o que cada uma faz. **O nome exato
+   dos dois modelos no projeto Vertex AI do cliente não foi confirmado**:
+   confirme os dois no console do Vertex AI / Model Garden antes de
+   configurar em produção. O modelo de imagem padrão embutido no código
+   (`gemini-2.5-flash-image`) também tem desligamento anunciado para
+   02/10/2026 — se essa data já passou, confirme o sucessor antes de
+   seguir.
 3. Para testar as fases 06, 13 ou 14 localmente com as funções de
    verdade, é preciso `vercel dev` (que precisa da CLI da Vercel e login)
    em vez do `python3 -m http.server` simples — as demais fases
    continuam funcionando com o servidor simples, só essas três dependem
    de função.
 
-Depois de configuradas, rodam sozinhas: a chave nunca precisa ser digitada
-por ninguém a cada uso, não tem processo pra manter de pé (a Vercel
-escala as funções sozinha a cada chamada).
+Depois de configuradas, rodam sozinhas: a credencial nunca precisa ser
+digitada por ninguém a cada uso, não tem processo pra manter de pé (a
+Vercel escala as funções sozinha a cada chamada; o token de acesso OAuth2
+é obtido e renovado automaticamente por `api/_auth-vertex.js`, com cache
+em memória entre invocações "quentes" da função).
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -1296,6 +1309,21 @@ registrado como lacuna conhecida, não escondida.
   de verdade (só simuladas via `page.route()`); o nome exato dos dois
   modelos envolvidos (visão, reusado pelas fases 06 e 14; imagem, só da
   fase 13) também não foi confirmado.
+  **Atualizado em 2026-08-29:** as três agora autenticam via Vertex AI
+  (`api/_auth-vertex.js`, cartão de handoff — o cliente confirmou que usa
+  Vertex AI, não a Gemini Developer API com chave simples). O fluxo de
+  autenticação (montagem e assinatura do JWT RS256, cache do token, troca
+  por token de acesso, erros de credencial malformada) tem cobertura de
+  teste unitário completa (`tests/auth-vertex.test.mjs`, com um par de
+  chaves RSA sintético e `fetch` simulado) — mas, pela mesma limitação de
+  rede de sempre (este ambiente não alcança nenhum domínio do Google, nem
+  `oauth2.googleapis.com` nem `aiplatform.googleapis.com`), **a troca de
+  token e a chamada ao Vertex AI em si nunca aconteceram de verdade**.
+  Continua sendo o item de maior risco do projeto. Use
+  `teste-gemini.html` (fora do repositório — foi entregue à parte, fora
+  do controle de versão, porque expõe credencial no navegador de
+  propósito) pra validar isso manualmente antes de configurar em
+  produção.
 - 1.4.4 (parte descartada, não pendente) — estabilidade de ordem (F07-04).
   Diferente das outras lacunas desta lista, esta não é "ainda não
   construída" — é uma limitação estrutural documentada em

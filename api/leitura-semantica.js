@@ -4,25 +4,32 @@
 //
 // Por que isto existe fora do navegador: a chave paga do Gemini nunca pode
 // aparecer em código que roda no cliente (qualquer um com o DevTools aberto
-// a veria e poderia gastar na conta). Esta função guarda a chave como
-// variável de ambiente do lado do servidor (Vercel) — junto com as outras
-// duas, são as únicas peças do projeto que saem do "100% no navegador",
-// deliberado, só pras três chamadas pagas.
+// a veria e poderia gastar na conta). Esta função autentica do lado do
+// servidor (Vercel) — junto com as outras duas, são as únicas peças do
+// projeto que saem do "100% no navegador", deliberado, só pras três
+// chamadas pagas.
+//
+// ATUALIZADO (cartão de handoff de 2026-08-29): o cliente usa Gemini via
+// VERTEX AI (projeto do Google Cloud + conta de serviço), não a Gemini
+// Developer API com chave simples que este arquivo usava antes — ver
+// api/_auth-vertex.js para o porquê e o fluxo de autenticação.
 //
 // Variáveis de ambiente exigidas (configurar no painel do projeto na
 // Vercel, nunca commitadas no repositório):
-//   GEMINI_API_KEY  (obrigatória)
-//   GEMINI_MODEL    (opcional — ver aviso abaixo)
+//   GOOGLE_SERVICE_ACCOUNT_JSON  (obrigatória — ver api/_auth-vertex.js)
+//   GOOGLE_CLOUD_PROJECT         (obrigatória)
+//   GOOGLE_CLOUD_LOCATION        (opcional, padrão "global")
+//   GEMINI_MODEL                 (opcional — ver aviso abaixo)
 //
 // AVISO: o nome exato do modelo de visão atual da conta paga do cliente
-// NÃO foi confirmado. O ambiente onde este arquivo foi escrito não tem
-// acesso de rede a domínios do Google, então o valor abaixo é um palpite
-// razoável, não um fato verificado — confirme o modelo certo no Google AI
-// Studio / painel de faturamento do Gemini antes de configurar
-// GEMINI_MODEL em produção.
+// NÃO foi confirmado contra o projeto Vertex AI dele (só contra a
+// disponibilidade geral do Gemini). Confirme o modelo certo no Google AI
+// Studio / console do Vertex AI antes de configurar GEMINI_MODEL em
+// produção.
 const MODELO_PADRAO = "gemini-2.5-flash"; // CONFIRME antes de usar em produção — não verificado
 
 const { montarPrompt, sanitizarResposta } = require("./_leitura-semantica-core.js");
+const { obterTokenDeAcesso, montarUrlVertex, lerProjetoELocation } = require("./_auth-vertex.js");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -30,9 +37,12 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const chave = process.env.GEMINI_API_KEY;
-  if (!chave) {
-    res.status(500).json({ erro: "GEMINI_API_KEY não configurada no servidor." });
+  let token, projeto, location;
+  try {
+    ({ projeto, location } = lerProjetoELocation());
+    token = await obterTokenDeAcesso();
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
     return;
   }
 
@@ -58,17 +68,14 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const respostaGemini = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${chave}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { responseMimeType: "application/json" },
-        }),
-      }
-    );
+    const respostaGemini = await fetch(montarUrlVertex({ projeto, location, modelo }), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: { responseMimeType: "application/json" },
+      }),
+    });
 
     if (!respostaGemini.ok) {
       const corpoErro = await respostaGemini.text();

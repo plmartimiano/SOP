@@ -4,14 +4,23 @@
 // projeto — o `tipo: "pago"` de fases.js já dizia isso desde antes desta
 // fase existir.
 //
+// ATUALIZADO (cartão de handoff de 2026-08-29): mesma migração das
+// outras duas funções — o cliente usa Vertex AI, não a Gemini Developer
+// API. Ver api/_auth-vertex.js.
+//
 // Variáveis de ambiente exigidas (painel do projeto na Vercel, nunca
 // commitadas):
-//   GEMINI_API_KEY   (obrigatória — a mesma das fases 06 e 13)
-//   GEMINI_MODEL     (opcional — reusa a mesma variável e o mesmo modelo
-//                      da fase 06: verificação cega é LEITURA de imagem,
-//                      não geração, então o modelo certo aqui é o
-//                      multimodal de texto+visão, não o de imagem da
-//                      fase 13. Mesma ressalva de "não confirmado".)
+//   GOOGLE_SERVICE_ACCOUNT_JSON  (obrigatória — ver api/_auth-vertex.js,
+//                                  mesma variável das fases 06 e 13)
+//   GOOGLE_CLOUD_PROJECT         (obrigatória)
+//   GOOGLE_CLOUD_LOCATION        (opcional, padrão "global")
+//   GEMINI_MODEL                 (opcional — reusa a mesma variável e o
+//                                  mesmo modelo da fase 06: verificação
+//                                  cega é LEITURA de imagem, não geração,
+//                                  então o modelo certo aqui é o
+//                                  multimodal de texto+visão, não o de
+//                                  imagem da fase 13. Mesma ressalva de
+//                                  "não confirmado".)
 const MODELO_PADRAO = "gemini-2.5-flash"; // CONFIRME antes de usar em produção — não verificado
 
 const {
@@ -22,6 +31,7 @@ const {
   sanitizarOrdem,
   sanitizarContinuidade,
 } = require("./_verificar-imagem-core.js");
+const { obterTokenDeAcesso, montarUrlVertex, lerProjetoELocation } = require("./_auth-vertex.js");
 
 function parteImagem({ imagemBase64, mimeType }) {
   return { inline_data: { mime_type: mimeType || "image/png", data: imagemBase64 } };
@@ -33,9 +43,12 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const chave = process.env.GEMINI_API_KEY;
-  if (!chave) {
-    res.status(500).json({ erro: "GEMINI_API_KEY não configurada no servidor." });
+  let token, projeto, location;
+  try {
+    ({ projeto, location } = lerProjetoELocation());
+    token = await obterTokenDeAcesso();
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
     return;
   }
 
@@ -79,14 +92,11 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const respostaGemini = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${chave}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json" } }),
-      }
-    );
+    const respostaGemini = await fetch(montarUrlVertex({ projeto, location, modelo }), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json" } }),
+    });
 
     if (!respostaGemini.ok) {
       const corpoErro = await respostaGemini.text();
