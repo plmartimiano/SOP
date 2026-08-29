@@ -6,6 +6,26 @@ enquanto). O plano completo está nos três documentos de referência do
 projeto: plano de construção (17 fases / 90 cartões), organograma de
 processo e EAP.
 
+## Nota de handoff — passo pendente no GitHub (fazer no momento certo)
+
+O branch `main` já existe no remoto (era o antigo `claude/sop-video-assembly-ji464g`,
+renomeado) e tem todo o histórico do projeto, mas o GitHub ainda está com
+`claude/sop-video-assembly-ji464g` marcado como branch padrão do
+repositório — não existe ferramenta de API disponível na sessão que criou
+este README para trocar isso.
+
+**Sequência correta, nessa ordem:**
+1. Confirmar (ou pedir para o dono do repositório confirmar) que
+   `Settings → Branches → Default branch` no GitHub já foi trocado de
+   `claude/sop-video-assembly-ji464g` para `main`. Sem esse passo, o GitHub
+   recusa apagar `claude/sop-video-assembly-ji464g` (não deixa apagar o
+   branch padrão).
+2. **Só depois disso**, apagar o branch antigo `claude/sop-video-assembly-ji464g`
+   do remoto (ele é redundante com `main` — mesmo conteúdo, nome antigo).
+
+Não apague `claude/sop-video-assembly-ji464g` antes de confirmar o passo 1 —
+a ordem importa.
+
 ## O que já existe
 
 Pacotes **1.1.2** (mapa de zonas da bancada), **1.1.4** (vocabulário de
