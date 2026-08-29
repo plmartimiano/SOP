@@ -160,6 +160,7 @@ export const FASES = [
     sai: "Seis quadros gerados em cadeia — cada um referenciando o anterior — com três variações por passo.",
     gate: "A bancada é reconhecidamente a mesma nos seis e nenhum tem texto embutido.",
     secaoDossie: "imagens",
+    notaSecao: "As imagens de verdade (base64, potencialmente vários MB cada) nunca entram no dossiê — mesmo risco de tamanho do vídeo (F01-01) — ficam na sessão do navegador (sessao-midia.js); a seção \"imagens\" grava só metadados (prompt, semente, o que cada item referenciou, sucesso ou erro). Como a fase 06, o nome exato do modelo de imagem da conta paga não foi confirmado (sem acesso de rede a domínios do Google no ambiente onde isto foi escrito) — ver aviso em api/gerar-imagem.js. \"Cada um referenciando o anterior\" é implementado como uma cadeia estritamente sequencial: quadro-mestre → passo 1 (variação-âncora) → passo 2 (variação-âncora) → ..., nunca uma referência aleatória; as variações 2 e 3 de cada passo usam a mesma referência da variação-âncora, não referências entre si. Esta é a PRIMEIRA fase que verifica de verdade, em código, se existe uma aprovação gravada na fase 11 antes de rodar — a barreira \"nenhuma imagem antes do aceite humano\" deixa de ser só ausência de fase e vira checagem real (js/geracao-imagens.js: gerarTodasAsImagens recusa sem aprovacaoExiste).",
   },
   {
     numero: "14",

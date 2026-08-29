@@ -23,17 +23,18 @@ aplica de verdade, sem perguntar de novo, a regra que a fase 08 homologou),
 **1.6** (a ficha de cada passo — mãos, ferramenta, peças, critério de
 conclusão, risco e estado do produto), a **fase 11** (mesa de validação
 humana — a barreira fixada desde o início do projeto: nenhuma imagem antes
-do aceite humano) e a **fase 12** (prompts de ilustração — seis prompts
-em camadas mais o quadro-mestre da bancada vazia) da EAP. Com isso, o
-bloco C do organograma (a parte "grátis" do pipeline) está completo, a
-primeira chamada paga do projeto (bloco D, fase 06) já existe — com uma
-ressalva de arquitetura importante, ver "Onde o navegador para de bastar"
-— o bloco D inteiro (fases 06 e 07)
-está fechado, o bloco E (fases 08, 09 e 10 — reconhecimento, consolidação
-e ficha) também, a última barreira humana antes de qualquer geração de
-imagem (fase 11) está implementada e testada, e a fase 12 monta os
-prompts que a fase 13 (a segunda chamada paga do projeto, ainda não
-construída) vai usar.
+do aceite humano), a **fase 12** (prompts de ilustração — seis prompts em
+camadas mais o quadro-mestre da bancada vazia) e a **fase 13** (geração
+das imagens — a segunda e última chamada paga do projeto até aqui) da
+EAP. Com isso, o bloco C do organograma (a parte "grátis" do pipeline)
+está completo, a primeira chamada paga do projeto (bloco D, fase 06) já
+existe — com uma ressalva de arquitetura importante, ver "Onde o
+navegador para de bastar" — o bloco D inteiro (fases 06 e 07) está
+fechado, o bloco E (fases 08, 09 e 10 — reconhecimento, consolidação e
+ficha) também, e o pipeline inteiro até a geração de imagem (fases 11, 12
+e 13) está implementado e testado — a barreira "nenhuma imagem antes do
+aceite humano" agora é uma checagem de código de verdade, não só ausência
+de fase.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -484,6 +485,69 @@ construída) vai usar.
   pedido de texto vindo de dado da ficha (não do template), a ordem dos
   passos recebidos é preservada sem reordenar, uma estação sem zonas
   mapeadas não quebra, e o campo `risco` nunca aparece no prompt.
+- `api/_gerar-imagem-core.js` — núcleo puro da fase 13: monta as `parts`
+  da requisição pro Gemini (o prompt de texto, mais — quando houver — a
+  imagem de referência do elo anterior da cadeia, como `inline_data`) e
+  extrai/valida a imagem da resposta, explicando o motivo (inclusive o
+  `finishReason` do modelo, por exemplo quando a resposta é bloqueada por
+  segurança) quando nenhuma imagem vem — nunca finge sucesso com um
+  resultado vazio, mesmo princípio de F06-04 na leitura semântica.
+- `api/gerar-imagem.js` — a função que roda fora do navegador (a
+  **segunda e última chamada paga** do projeto planejada até aqui, mesmo
+  motivo de arquitetura de `api/leitura-semantica.js` — ver "Onde o
+  navegador para de bastar"): recebe prompt + referência opcional +
+  semente do cliente, chama o Gemini com a chave do servidor, devolve a
+  imagem gerada em base64. **Mesma ressalva de modelo não confirmado da
+  fase 06**: o nome exato do modelo de imagem da conta paga não foi
+  verificado (sem acesso de rede a domínios do Google no ambiente onde
+  isto foi escrito) — o valor padrão embutido (`gemini-2.5-flash-image`)
+  é um palpite razoável, não um fato confirmado.
+- `js/geracao-imagens.js` — orquestração da cadeia de geração. Diferente
+  da fase 06 (onde cada fatia é independente e cabe em lotes livres),
+  aqui a cadeia é sequencial por construção: `montarPlanoDeGeracao`
+  decide, sem chamar rede nenhuma, quem referencia quem — o quadro-mestre
+  primeiro, sem referência; cada passo referencia a **variação-âncora**
+  (a primeira das três) do elo anterior, nunca uma referência aleatória;
+  as variações 2 e 3 de cada passo usam a mesma referência da
+  variação-âncora, não referências entre si, pra a incerteza de uma
+  variação nunca se acumular sobre a próxima etapa. `gerarTodasAsImagens`
+  roda o plano elo por elo (as 3 variações de um mesmo passo rodam em
+  paralelo entre si; entre elos é sequencial, porque um elo depende da
+  imagem que o anterior gerou), com a mesma retentativa de espera
+  progressiva de `leitura-semantica.js`. **É aqui que a barreira "nenhuma
+  imagem antes do aceite humano" — fixada desde a primeira mensagem deste
+  projeto — vira checagem de código pela primeira vez**: a função recusa
+  rodar (lança erro, não silencia) sem receber `aprovacaoExiste: true`,
+  mesmo que os prompts existam prontos de uma sessão anterior.
+- `js/fase13-ui.js` — tela da fase 13: exige prompts (fase 12) e, acima
+  de tudo, uma aprovação gravada (fase 11) — sem ela, mostra um bloqueio
+  explícito e nem desenha o botão de gerar (defesa em duas camadas: a
+  tela nem oferece o botão, e mesmo que oferecesse, `geracao-imagens.js`
+  recusaria por conta própria). Avisa o custo antes de gerar (19 chamadas
+  no plano de 6 passos × 3 variações + 1 quadro-mestre), mostra cada
+  imagem assim que chega, e — igual ao vídeo (F01-01) — **as imagens em
+  si nunca entram no dossiê**: ficam em `sessao-midia.js`, só na sessão
+  da aba atual; o dossiê grava só metadados por item (prompt usado via
+  referência, semente, o que foi referenciado, sucesso ou o motivo do
+  erro, tamanho aproximado em bytes) — o suficiente pra auditar sem
+  guardar potencialmente dezenas de MB de imagem em JSON.
+- `tests/gerar-imagem-core.test.mjs` — 6 testes: monta as partes com e
+  sem referência, extrai imagem tanto do formato `inline_data` quanto
+  `inlineData` (a API do Gemini historicamente aceita as duas grafias em
+  contextos diferentes — o código cobre ambas por segurança), explica o
+  motivo (inclusive `finishReason`) quando não vem imagem, e não trava
+  com uma resposta vazia ou malformada.
+- `tests/geracao-imagens.test.mjs` — 11 testes: retentativa e desistência
+  (mesmo padrão da fase 06), o plano tem exatamente 1 + passos×variações
+  itens, o passo 1 referencia o quadro-mestre e o passo 2 referencia a
+  âncora do passo 1 (nunca variação 2 ou 3), sementes distintas e
+  determinísticas, **a geração recusa sem `aprovacaoExiste` (inclusive
+  quando o parâmetro vem `undefined` por engano, não só `false`
+  explícito)**, o número certo de chamadas com a referência certa em cada
+  uma (confirmado rastreando o payload de cada chamada simulada, não só
+  contando quantas houve), as 3 variações de um mesmo passo rodam em
+  paralelo (concorrência real medida, não só contagem), e um erro numa
+  variação não trava as outras nem o resto da cadeia.
 
 ## Onde o navegador para de bastar (fase 06 em diante)
 
@@ -491,33 +555,37 @@ Até a fase 05, o projeto inteiro roda 100% no navegador — nenhum servidor,
 nenhuma chave, `python3 -m http.server` basta. A fase 06 precisa mandar
 imagens pra um modelo de visão pago (Gemini), e isso quebra essa regra de
 um jeito que não dá pra evitar: colocar a chave paga direto no JavaScript
-do navegador a exporia a qualquer pessoa com o DevTools aberto.
+do navegador a exporia a qualquer pessoa com o DevTools aberto. A fase 13
+(geração de imagem) tem exatamente o mesmo problema, com a mesma solução.
 
-A solução adotada é o menor desvio possível dessa regra: uma única função
-serverless na Vercel (`api/leitura-semantica.js`), não um backend de
-verdade. Ela guarda a chave como variável de ambiente do servidor — nunca
-num arquivo do projeto, nunca no navegador — e é a única peça que sai do
-"100% client-side". Todo o resto (fases 00 a 05, o dossiê, a navegação)
-continua exatamente como estava.
+A solução adotada é o menor desvio possível dessa regra: duas funções
+serverless na Vercel (`api/leitura-semantica.js` para a fase 06,
+`api/gerar-imagem.js` para a fase 13), não um backend de verdade. As duas
+guardam a chave como variável de ambiente do servidor — nunca num arquivo
+do projeto, nunca no navegador — e são as únicas peças que saem do "100%
+client-side". Todo o resto (fases 00 a 05, 07 a 12, o dossiê, a
+navegação) continua exatamente como estava.
 
 **Para rodar isso de verdade:**
 1. Publicar o projeto na Vercel (conectar o repositório, deploy automático
    a cada push).
-2. Configurar `GEMINI_API_KEY` (e, se precisar, `GEMINI_MODEL`) no painel
-   do projeto — ver `.env.example` para o que cada uma faz. **O nome exato
-   do modelo de visão atual não foi confirmado**: o ambiente onde este
-   código foi escrito não tem acesso de rede a domínios do Google, então o
-   valor padrão embutido no código é um palpite razoável, não um fato
-   verificado. Confirme no Google AI Studio antes de configurar em
-   produção.
-3. Para testar a fase 06 localmente com a função de verdade, é preciso
-   `vercel dev` (que precisa da CLI da Vercel e login) em vez do
-   `python3 -m http.server` simples — as fases 00 a 05 continuam
-   funcionando com o servidor simples, só a 06 depende da função.
+2. Configurar `GEMINI_API_KEY` (obrigatória, compartilhada pelas duas
+   funções) e, se precisar, `GEMINI_MODEL` e `GEMINI_IMAGE_MODEL` no
+   painel do projeto — ver `.env.example` para o que cada uma faz. **O
+   nome exato dos modelos de visão e de imagem da conta paga não foi
+   confirmado, em nenhum dos dois casos**: o ambiente onde este código
+   foi escrito não tem acesso de rede a domínios do Google, então os
+   valores padrão embutidos no código são palpites razoáveis, não fatos
+   verificados. Confirme os dois no Google AI Studio antes de configurar
+   em produção.
+3. Para testar as fases 06 ou 13 localmente com as funções de verdade, é
+   preciso `vercel dev` (que precisa da CLI da Vercel e login) em vez do
+   `python3 -m http.server` simples — as demais fases continuam
+   funcionando com o servidor simples, só essas duas dependem de função.
 
-Depois de configurada, roda sozinha: a chave nunca precisa ser digitada por
-ninguém a cada uso, não tem processo pra manter de pé (a Vercel escala a
-função sozinha a cada chamada).
+Depois de configuradas, rodam sozinhas: a chave nunca precisa ser digitada
+por ninguém a cada uso, não tem processo pra manter de pé (a Vercel
+escala as funções sozinha a cada chamada).
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -891,11 +959,46 @@ comportamento contra regressão futura. Registrado aqui porque esse é
 exatamente o tipo de coisa que vale mais a pena mostrar o processo do que
 só o resultado final. Nenhum erro de página em nenhum passo do teste.
 
+A geração das imagens (fase 13) foi validada em três frentes, porque é a
+fase que aplica de verdade a barreira mais importante do projeto — e
+porque a chamada de verdade ao Gemini de imagem tem a mesma limitação de
+rede já registrada na fase 06 (sem acesso a domínios do Google neste
+ambiente). Primeiro, `tests/gerar-imagem-core.test.mjs` (6 testes) e
+`tests/geracao-imagens.test.mjs` (11 testes) — lógica pura e orquestração
+com `fetch` simulado, ver lista de módulos acima.
+
+Segundo, o **teste do bloqueio**, feito de propósito com um fixture
+adversarial que o fluxo normal da interface nunca produziria: um dossiê
+com a seção `prompts` já preenchida (como se a fase 12 tivesse rodado)
+mas `aprovacoes` vazia — simulando um dossiê editado por fora, já que a
+UI normal nunca chega nesse estado (a fase 12 já exige aprovação pra
+rodar). Importar esse fixture e ir direto pra fase 13 mostrou o bloqueio
+explícito, sem nenhum botão de gerar desenhado na tela, e confirmei que
+**zero chamadas** chegaram ao proxy interceptado — não é só a mensagem
+que muda, a chamada de rede paga realmente não acontece.
+
+Terceiro, um encadeamento completo 07 → 08 → 09 → 10 → 11 → 12 → 13 num
+Chromium real, com `/api/gerar-imagem` interceptado via `page.route()`
+(mesmo padrão da fase 06) devolvendo uma imagem PNG 1×1 válida em base64.
+Depois de aprovar na fase 11 e montar os prompts na fase 12, a fase 13
+mostrou o aviso de custo (19 imagens: 1 quadro-mestre + 6 passos × 3
+variações), gerou as 19 de verdade — confirmei a contagem exata de
+chamadas ao proxy e que todos os 19 cartões mostraram uma imagem
+(`<img>` com `src` de dado válido) — e gravar no dossiê confirmou o mais
+importante do ponto de vista arquitetural: os metadados salvos (`itens`) **não têm o
+campo `imagemBase64`** em nenhum item, e o "Estado no dossiê" inteiro
+ficou com pouco mais de 3 KB — não os potenciais megabytes que 19
+imagens em base64 ocupariam se tivessem ido para o JSON. Nenhum erro de
+página em nenhum dos três testes.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
-- **Validar `api/leitura-semantica.js` contra o Gemini de verdade.** Ainda
-  o item de maior risco de tudo que foi construído até aqui — ver a
-  ressalva de teste da fase 06 acima.
+- **Validar `api/leitura-semantica.js` e `api/gerar-imagem.js` contra o
+  Gemini de verdade.** Ainda os itens de maior risco de tudo que foi
+  construído até aqui — ver a ressalva de teste das fases 06 e 13 acima.
+  As duas funções nunca foram chamadas de verdade (só simuladas via
+  `page.route()`); o nome exato dos dois modelos (visão e imagem) também
+  não foi confirmado.
 - 1.4.4 (parte descartada, não pendente) — estabilidade de ordem (F07-04).
   Diferente das outras lacunas desta lista, esta não é "ainda não
   construída" — é uma limitação estrutural documentada em
@@ -941,25 +1044,24 @@ só o resultado final. Nenhum erro de página em nenhum passo do teste.
   gasto estimado). Com a fase 06 chamando um modelo pago de verdade agora,
   este pacote deixou de ser abstrato — é o próximo com utilidade real
   imediata.
-- A aplicação de verdade da barreira "nenhuma imagem antes do aceite
-  humano" — a fase 12 já lê `aprovacoes` para funcionar (sem uma versão
-  gravada ali, ela se recusa a montar os prompts), mas isso ainda não é
-  o bloqueio "de verdade": hoje ele existe só porque a fase 13 (geração de
-  imagem) ainda não foi construída, não porque algum código dela verifica
-  a aprovação. Quando a fase 13 existir, a primeira coisa que precisa
-  fazer é recusar rodar sem uma versão gravada em `aprovacoes` — mesmo
-  que os prompts existam, gerados numa sessão anterior, sem que o aceite
-  também exista.
 - A bíblia visual de verdade (glossário visual reusável por estação, com
   referências de imagem) — hoje `js/biblia-visual.js` é uma constante fixa
   igual pra todo dossiê, mesma simplificação de `vocabulario-verbos.js`.
   Depende da biblioteca de estações (1.8.4, ver acima).
-- fase 13 (geração das imagens) é o próximo passo natural do pipeline: a
-  segunda e última chamada paga do projeto planejada até aqui — gera os
-  seis quadros em cadeia (cada um referenciando o quadro-mestre e/ou o
-  anterior, pra manter a bancada reconhecível) a partir dos prompts que a
-  fase 12 acabou de montar, com semente fixa e três variações por passo.
-  É a primeira fase que precisa de verdade checar `aprovacoes` antes de
-  rodar (ver bullet acima) — sem isso, a barreira "nenhuma imagem antes
-  do aceite" continua sendo só a ausência da própria fase, não uma
-  garantia de código.
+- Escolha entre as 3 variações de cada passo — hoje a fase 13 gera as
+  três e grava metadados das três, mas não existe nenhuma tela pra uma
+  pessoa escolher qual das três (ou se nenhuma) representa bem o passo.
+  Isso não estava explícito no plano original como pacote separado; fica
+  registrado aqui como lacuna descoberta ao implementar F13.
+- fase 14 (verificação cega) é o próximo passo natural do pipeline: a
+  **terceira** chamada paga do projeto (o plano original não deixa isso
+  óbvio à primeira vista, mas o `tipo: "pago"` de `fases.js` já estava
+  certo desde a fase 1.2.4) — manda as imagens geradas, sozinhas e sem a
+  ficha, de volta pro Gemini, pedindo uma nota por quadro, checagem de
+  continuidade entre eles e um teste de ordem embaralhada (a sequência
+  precisa ser reconstruível só pelas imagens). Tem uma limitação de
+  arquitetura herdada da fase 13: como as imagens vivem só na sessão do
+  navegador (nunca no dossiê — ver acima), a fase 14 só pode rodar na
+  MESMA aba/sessão onde a fase 13 gerou as imagens, a menos que se
+  resolva primeiro como reidratar imagens de uma sessão anterior (fora de
+  escopo até aqui).

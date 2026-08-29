@@ -7,6 +7,7 @@
 
 let videoAprovado = null; // { file, dados } — o File do MP4 aprovado na fase 02
 let framesExtraidos = null; // [{ indice, tempoSegundos, miniaturaDataUrl }] — fase 03
+let imagensGeradas = null; // Map "chave do item" -> { imagemBase64, mimeType } — fase 13
 
 export function definirVideoAprovado(file, dados) {
   videoAprovado = { file, dados };
@@ -25,10 +26,24 @@ export function obterFramesExtraidos() {
   return framesExtraidos;
 }
 
+// As imagens em si (base64, potencialmente vários MB cada, 19 por dossiê
+// no plano atual — 1 quadro-mestre + 6 passos × 3 variações) nunca entram
+// no dossiê JSON, mesmo risco do vídeo (F01-01: "um dossiê de 300 MB
+// trava o navegador"). O dossiê grava só metadados (seção "imagens" — ver
+// js/fase13-ui.js); a imagem de verdade fica aqui, na sessão.
+export function definirImagensGeradas(mapaImagens) {
+  imagensGeradas = mapaImagens;
+}
+
+export function obterImagensGeradas() {
+  return imagensGeradas;
+}
+
 // Chamado sempre que o dossiê muda (novo, exemplo, importado) — o vídeo em
 // memória pertence à sessão de ingestão anterior, não ao dossiê que acabou
 // de entrar.
 export function limparSessaoMidia() {
   videoAprovado = null;
   framesExtraidos = null;
+  imagensGeradas = null;
 }

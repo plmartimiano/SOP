@@ -18,7 +18,8 @@ import { montarConsolidacao } from "./fase09-ui.js";
 import { montarFichas } from "./fase10-ui.js";
 import { montarValidacao } from "./fase11-ui.js";
 import { montarPrompts } from "./fase12-ui.js";
-import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
+import { montarGeracaoImagens } from "./fase13-ui.js";
+import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, definirImagensGeradas, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
 
@@ -35,6 +36,7 @@ const TITULO_FERRAMENTA = {
   "10": "Gerar a ficha de cada passo",
   "11": "Validar e aprovar",
   "12": "Montar os prompts",
+  "13": "Gerar as imagens",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -157,7 +159,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -344,6 +346,23 @@ function renderPainel() {
         adicionarVersao(dossie, "prompts", dadosPrompts, { origem: "fase 12 (prompts de ilustração)" });
         renderTudo();
         mostrarStatus(`${dadosPrompts.passos.length + 1} prompts gravados no dossiê (6 passos + quadro-mestre).`, "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "13") {
+    const promptsAtual = dossie ? obterVersaoAtual(dossie, "prompts") : null;
+    const aprovacoesAtual = dossie ? obterVersaoAtual(dossie, "aprovacoes") : null;
+    montarGeracaoImagens(document.getElementById("faseFerramenta"), {
+      prompts: promptsAtual ? promptsAtual.dados : null,
+      aprovacaoExiste: aprovacoesAtual !== null,
+      onGravar: (dadosImagens, mapaImagens) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "imagens", dadosImagens, { origem: "fase 13 (geração das imagens)" });
+        definirImagensGeradas(mapaImagens);
+        renderTudo();
+        const sucesso = dadosImagens.itens.filter((i) => i.sucesso).length;
+        mostrarStatus(`${sucesso} de ${dadosImagens.itens.length} imagens geradas e gravadas no dossiê (metadados) e na sessão (imagens em si).`, "ok");
       },
     });
   }
