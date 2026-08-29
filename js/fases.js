@@ -184,6 +184,7 @@ export const FASES = [
     sai: "SOP em PDF e PNG: 80% imagem, 20% texto sobreposto fora da IA, com cabeçalho e versão.",
     gate: "Um operador que nunca viu a estação executa a montagem só com o SOP na mão.",
     secaoDossie: null,
+    notaSecao: "Diferente de todas as fases anteriores, o resultado aqui é um arquivo de saída (PNG por página, PDF via impressão do navegador), não um dado de processo — não há seção própria no dossiê nem \"gravar\", só baixar. \"80% imagem, 20% texto\" é uma proporção exata de layout (calcularLayout em js/diagramacao.js: 0.8 da altura da página, sempre), não uma estimativa como os 70% da fase 12. Sem biblioteca de PDF (projeto sem build, sem dependência externa) — o \"PDF\" é o print-to-PDF nativo do navegador (window.print() com CSS @media print), deliberado. O gate (\"um operador que nunca viu a estação executa só com o SOP\") não é automatizável — exigiria um teste de usuário; o que o código garante é a condição necessária, não suficiente: nenhuma página pode faltar imagem. Usa sempre a variação-âncora de cada passo, mesma decisão e mesma lacuna de escolha manual já registradas nas fases 13/14.",
   },
   {
     numero: "16",

@@ -191,3 +191,19 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 }
 
 footer{border-top:3px solid var(--ink);margin-top:40px;padding-top:18px;font-size:13.5px;color:var(--ink-soft)}
+
+/* Fase 15 -- área de impressão (o "PDF" desta fase é o print-to-PDF nativo
+   do navegador, sem biblioteca: escondida na tela normal, visível só
+   quando a pessoa manda imprimir / salvar como PDF). */
+.impressao-sop{display:none}
+@media print{
+  body *{visibility:hidden}
+  .impressao-sop,.impressao-sop *{visibility:visible}
+  .impressao-sop{display:block;position:absolute;left:0;top:0;width:100%}
+  .impressao-pagina{page-break-after:always;position:relative;width:100%}
+  .impressao-pagina img{width:100%;display:block}
+  .impressao-sem-imagem{width:100%;aspect-ratio:850/880;background:#C6C8C1;color:#565A60;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .impressao-texto{padding:10px 16px}
+  .impressao-texto h4{margin:0 0 6px;font-size:15px}
+  .impressao-texto p{margin:3px 0;font-size:12px}
+}

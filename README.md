@@ -25,17 +25,19 @@ conclusão, risco e estado do produto), a **fase 11** (mesa de validação
 humana — a barreira fixada desde o início do projeto: nenhuma imagem antes
 do aceite humano), a **fase 12** (prompts de ilustração — seis prompts em
 camadas mais o quadro-mestre da bancada vazia), a **fase 13** (geração
-das imagens — a segunda chamada paga do projeto) e a **fase 14**
+das imagens — a segunda chamada paga do projeto), a **fase 14**
 (verificação cega — nota por quadro, teste de ordem embaralhada e
-checagem de continuidade, a terceira chamada paga) da EAP. Com isso, o
-bloco C do organograma (a parte "grátis" do pipeline) está completo, a
-primeira chamada paga do projeto (bloco D, fase 06) já existe — com uma
-ressalva de arquitetura importante, ver "Onde o navegador para de bastar"
-— o bloco D inteiro (fases 06 e 07) está fechado, o bloco E (fases 08, 09
-e 10 — reconhecimento, consolidação e ficha) também, e o pipeline inteiro
-até a verificação das imagens geradas (fases 11 a 14) está implementado e
-testado — a barreira "nenhuma imagem antes do aceite humano" é uma
-checagem de código de verdade, não só ausência de fase.
+checagem de continuidade, a terceira chamada paga) e a **fase 15**
+(diagramação e entrega — SOP final em PNG por página e PDF via impressão
+do navegador) da EAP. Com isso, o bloco C do organograma (a parte
+"grátis" do pipeline) está completo, a primeira chamada paga do projeto
+(bloco D, fase 06) já existe — com uma ressalva de arquitetura
+importante, ver "Onde o navegador para de bastar" — o bloco D inteiro
+(fases 06 e 07) está fechado, o bloco E (fases 08, 09 e 10 —
+reconhecimento, consolidação e ficha) também, e o **pipeline inteiro, do
+vídeo bruto ao SOP em PDF** (fases 00 a 15), está implementado e testado
+— a barreira "nenhuma imagem antes do aceite humano" é uma checagem de
+código de verdade, não só ausência de fase.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -609,6 +611,45 @@ checagem de código de verdade, não só ausência de fase.
   continuidade, e as continuidades saem na ordem real dos pares mesmo
   rodando em paralelo (confirmado com atrasos artificiais desencontrados
   entre as chamadas).
+- `js/diagramacao.js` — lógica pura da fase 15 (diagramação e entrega, a
+  última fase "padrao" do fluxo principal). **Diferente de todas as fases
+  anteriores, esta não tem seção própria no dossiê** (`secaoDossie: null`
+  em `fases.js`) — o resultado é um arquivo de saída, não um dado de
+  processo. `montarPaginasSOP` cruza as fichas aprovadas (o `final` de
+  cada uma, pós-correção da fase 11) com a imagem de cada passo (mesma
+  variação-âncora usada nas fases 13/14, mesma lacuna de escolha manual
+  ainda não resolvida) e monta uma página por passo, sem inventar um
+  placeholder quando a imagem não está disponível (`temImagem: false`,
+  explícito). `calcularLayout` é a única parte do projeto onde "80%
+  imagem, 20% texto" é uma proporção **exata e medida em pixels**, não
+  uma estimativa como os 70% da fase 12 — a imagem sempre ocupa
+  exatamente 0,8 da altura da página. `verificarProntoParaEntrega` checa
+  a condição necessária (mas não suficiente) do gate F15: nenhuma página
+  pode faltar imagem — o gate de verdade ("um operador que nunca viu a
+  estação executa a montagem só com o SOP na mão") exigiria um teste de
+  usuário real, não automatizável.
+- `js/fase15-ui.js` — tela da fase 15: desenha cada página num `<canvas>`
+  (a imagem ocupando os 80% superiores calculados por `calcularLayout`,
+  uma faixa de texto nos 20% inferiores com cabeçalho, mãos, ferramenta,
+  peças, critério de conclusão e risco), com um botão de baixar cada
+  página como PNG (mesmo padrão de `Blob` + link `download` de
+  `dossie-io.js`). **Sem biblioteca de geração de PDF** — o projeto é sem
+  build e sem dependência externa, e este ambiente não tem rede pra
+  baixar uma — então o "PDF" é o caminho nativo do navegador: uma área de
+  impressão escondida na tela normal (`display:none`), que só aparece via
+  CSS `@media print`, com uma página por passo (`page-break-after:
+  always`); o botão "Imprimir / salvar como PDF" chama `window.print()` e
+  deixa a pessoa escolher "Salvar como PDF" no diálogo do sistema — uma
+  simplificação deliberada e documentada, não escondida.
+- `tests/diagramacao.test.mjs` — 9 testes: uma página por ficha na ordem
+  recebida, o texto sobreposto carrega os campos certos da ficha, uma
+  página sem imagem disponível fica marcada honestamente (`temImagem:
+  false`, sem placeholder inventado), o cabeçalho carrega nome da estação
+  e versão do dossiê (com um valor padrão explícito quando falta o
+  nome), `verificarProntoParaEntrega` passa com todas as imagens e aponta
+  exatamente os números que faltam quando não passa, e `calcularLayout`
+  reserva exatamente 80%/20% da altura (inclusive com arredondamento em
+  alturas que não dividem exato, sem perder nem sobrar pixel).
 
 ## Onde o navegador para de bastar (fase 06 em diante)
 
@@ -1091,6 +1132,29 @@ da fase 13 mostrou que o "Estado no dossiê" continuava com os `itens` da
 própria fase 13, não os dados da fase 14. Nenhum erro de página em
 nenhum passo.
 
+A diagramação e entrega (fase 15) foi validada com `tests/diagramacao.test.mjs`
+(9 testes, lógica pura — ver lista de módulos acima) e um encadeamento em
+Chromium real de 07 até 15 (a fase 14 não entra nessa cadeia porque a 15
+não depende dela — só de `aprovacoes` e das imagens na sessão). Sem
+aprovação, a fase 15 pede pra rodar a fase 11; com aprovação mas sem
+imagens na sessão, pede pra rodar a fase 13. Depois de gerar as imagens,
+a fase 15 mostrou as 6 páginas prontas.
+
+Três coisas foram verificadas com manipulação real do DOM, não só leitura
+de código: **o canvas de cada página tem conteúdo desenhado de verdade**
+(lendo os pixels via `getImageData` e confirmando que nem todos são
+brancos — provando que a imagem carregada via `Image().onload` realmente
+foi desenhada, não só que a chamada de desenho foi feita); **o botão de
+baixar PNG dispara um download real** (capturado com
+`page.waitForEvent("download")`, confirmando o nome de arquivo sugerido
+— `sop-passo-1.png`); e **o botão de imprimir chama `window.print()` de
+verdade** (substituí `window.print` por um contador antes de carregar a
+página, via `page.addInitScript`, já que o diálogo de impressão do
+sistema não abre em modo headless) e confirmei que a área de impressão
+escondida tinha as 6 páginas com as imagens certas no `src`, prontas para
+quando a chamada de verdade acontecer. Nenhum erro de página em nenhum
+passo.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - **Validar `api/leitura-semantica.js`, `api/gerar-imagem.js` e
@@ -1160,11 +1224,18 @@ nenhum passo.
   MESMA aba, sem recarregar a página. Reidratar imagens de uma sessão
   anterior (por exemplo, reabrindo um dossiê salvo dias depois) é uma
   lacuna real, fora de escopo até aqui.
-- fase 15 (diagramação e entrega) é o próximo passo natural do pipeline —
-  e a última fase "padrao" (sem custo) antes do encerramento do fluxo
-  principal: monta o SOP final em PDF e PNG a partir das seis imagens
-  aprovadas (o critério de aprovação em si ainda não existe — a fase 14
-  só verifica clareza e continuidade, não decide "aprovado"; ver a lacuna
-  de escolha de variação acima, que também se aplica aqui) e das fichas,
-  com 80% de espaço visual e 20% de texto sobreposto FORA da IA — nenhuma
-  chamada paga nesta fase, é montagem de documento.
+- O critério de aprovação de imagem em si ainda não existe — a fase 14
+  só verifica clareza e continuidade, não decide "aprovado"; a fase 15
+  usa a variação-âncora de cada passo como se fosse aprovada, mesma
+  lacuna de escolha manual registrada acima.
+- fase 16 (regressão, versão e o próximo vídeo) fecha as 17 fases do
+  plano original, mas é estruturalmente diferente de todas as anteriores:
+  não processa o dossiê de UM vídeo, é o processo de governança do
+  PRÓPRIO PROGRAMA — qualquer melhoria de código só é aceita depois de
+  rodar contra um conjunto de três vídeos de referência e confirmar que
+  nenhum indicador piorou. Não existe ainda esse conjunto de referência,
+  nem os indicadores a comparar, nem fica claro que o padrão de UI
+  "ferramenta por fase" que as fases 00–15 usam sirva aqui — é mais
+  parecido com uma suíte de regressão/CI do que com uma tela de
+  processamento. Fica registrado como decisão de arquitetura em aberto,
+  não como código faltando no mesmo sentido das fases anteriores.

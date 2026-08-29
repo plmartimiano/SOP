@@ -20,6 +20,7 @@ import { montarValidacao } from "./fase11-ui.js";
 import { montarPrompts } from "./fase12-ui.js";
 import { montarGeracaoImagens } from "./fase13-ui.js";
 import { montarVerificacaoCega } from "./fase14-ui.js";
+import { montarDiagramacao } from "./fase15-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, definirImagensGeradas, obterImagensGeradas, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -39,6 +40,7 @@ const TITULO_FERRAMENTA = {
   "12": "Montar os prompts",
   "13": "Gerar as imagens",
   "14": "Verificar às cegas",
+  "15": "Diagramar e exportar",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -161,7 +163,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -385,6 +387,16 @@ function renderPainel() {
           dadosVerificacao.gateSequenciaReconstruivel ? "ok" : "erro"
         );
       },
+    });
+  }
+
+  if (fase.numero === "15") {
+    const aprovacoesAtual = dossie ? obterVersaoAtual(dossie, "aprovacoes") : null;
+    montarDiagramacao(document.getElementById("faseFerramenta"), {
+      fichasAprovadas: aprovacoesAtual ? aprovacoesAtual.dados.fichas : null,
+      imagensGeradas: obterImagensGeradas(),
+      nomeEstacao: dossie ? dossie.estacao.nome : "",
+      versaoDossie: dossie ? dossie.formatVersion : null,
     });
   }
 }
