@@ -80,7 +80,7 @@ export const FASES = [
     sai: "Cada fatia descrita: verbo, componente, ferramenta, mão, confiança.",
     gate: "80% das fatias vêm coerentes e nenhum nome está fora do glossário.",
     secaoDossie: "microAcoes",
-    notaSecao: "A leitura enriquece as mesmas fatias da fase 05 — ainda não tem campos próprios (verbo, componente, confiança) dentro de microAcoes; entram quando o pacote 1.4 for implementado.",
+    notaSecao: "A leitura enriquece as mesmas fatias da fase 05, gravando uma nova versão de microAcoes com o campo leituraSemantica em cada uma. Chama o Gemini através de uma função própria (api/leitura-semantica.js) — é a única parte do projeto que sai do navegador, porque a chave paga não pode ficar no lado do cliente. O glossário usado hoje é uma lista aberta pelo mapa de zonas, não o glossário completo do pacote 1.1.3 (ainda não construído).",
   },
   {
     numero: "07",

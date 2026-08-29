@@ -8,15 +8,17 @@ processo e EAP.
 
 ## O que já existe
 
-Pacotes **1.1.2** (mapa de zonas da bancada), **1.2.1** (formato do
+Pacotes **1.1.2** (mapa de zonas da bancada), **1.1.4** (vocabulário de
+verbos — versão simplificada, ver ressalva), **1.2.1** (formato do
 dossiê), **1.2.3** (exportar/importar), **1.2.4** (interface por etapa),
 **1.3.1** (entrada de arquivo), **1.3.2** (triagem de qualidade), **1.3.3**
 (extração de frames), **1.3.4** (curva de movimento, geral **e** por zona),
 **1.3.5** (detecção de ciclos — ver ressalva sobre a revisão visual
-arrastável) e **1.3.6** (fatiamento em micro-ações) da EAP. Com isso, o
-bloco C do organograma (a parte "grátis" do pipeline, matemática de pixel
-sem custo de modelo) está completo — a fase 06 é a primeira que vai
-chamar um modelo pago.
+arrastável), **1.3.6** (fatiamento em micro-ações) e **1.4.1 + 1.4.2 +
+1.4.3** (leitura semântica) da EAP. Com isso, o bloco C do organograma (a
+parte "grátis" do pipeline) está completo, e a primeira chamada paga do
+projeto (bloco D, fase 06) já existe — com uma ressalva de arquitetura
+importante, ver a seção "Onde o navegador para de bastar" abaixo.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -153,6 +155,81 @@ chamar um modelo pago.
   frame-chave certo (o de maior movimento dentro da fatia) e o contexto de
   antes/depois, e confere o caso degenerado de zero vales (uma fatia só,
   cobrindo o ciclo inteiro).
+- `js/vocabulario-verbos.js` — a lista fechada de verbos do cartão F00-05
+  (pacote 1.1.4), como constante fixa (`posicionar`, `encaixar`,
+  `parafusar`, `conectar`, `testar`, `transferir` — o padrão que o próprio
+  plano sugere). **Versão simplificada**: sem tela de edição, sem
+  persistência — vocabulário e glossário são recurso da *estação*, reusado
+  entre vídeos, não do dossiê (que é por vídeo); a "biblioteca da estação"
+  que guardaria isso de verdade é o pacote 1.8.4, ainda não construído.
+- `api/_leitura-semantica-core.js` — o núcleo puro dos pacotes 1.4.1
+  (módulo de leitura semântica) e 1.4.2 (identificação por zona): monta o
+  prompt (glossário fechado, verbos permitidos, e a zona que a mão visitou
+  como *resposta*, não como pergunta — F06-02) e sanitiza a resposta do
+  modelo. A sanitização é o F06-04 ("proibir invenção") aplicado em código,
+  não só pedido no prompt: verbo fora da lista ou objeto fora do glossário
+  nunca vira dado gravado — vira `indeterminado`, com o motivo exato.
+  Campo obrigatório ausente é erro, não silêncio (F06-03).
+- `api/leitura-semantica.js` — a função que roda fora do navegador (ver
+  "Onde o navegador para de bastar" abaixo): recebe o payload do cliente,
+  monta o prompt via `_leitura-semantica-core.js`, chama o Gemini com a
+  chave guardada como variável de ambiente do servidor, e sanitiza a
+  resposta antes de devolver.
+- `js/leitura-semantica.js` — pacote 1.4.3 (controle de lotes): monta o
+  payload de cada fatia (o trio antes/chave/depois a partir do índice do
+  frame-chave), chama o proxy em lotes de até 4 em paralelo, com
+  retentativa e espera progressiva (F06-05) — salva cada resposta assim
+  que chega, não espera o lote inteiro.
+- `js/fase06-ui.js` — tela da fase 06: pede micro-ações fatiadas na fase 05
+  e os frames ainda na sessão; lê cada frame-chave, mostra o progresso e o
+  resultado linha a linha (verbo/objeto/mão/confiança, ou "indeterminado"
+  destacado), e grava uma nova versão de `microAcoes` com o campo
+  `leituraSemantica` acrescentado a cada fatia — sem apagar a versão
+  anterior (a da fase 05, sem essa leitura).
+- `tests/leitura-semantica-core.test.mjs` — testes do prompt e da
+  sanitização: aceita resposta bem formada, repassa `indeterminado` do
+  próprio modelo, e — o mais importante — vira `indeterminado` (nunca erro,
+  nunca dado inventado) quando falta campo, quando o verbo não está na
+  lista, ou quando objeto/ferramenta não estão no glossário.
+- `tests/leitura-semantica-cliente.test.mjs` — testes de lotes e
+  retentativa com um `fetch` simulado: tenta de novo depois de uma falha,
+  desiste depois do número configurado de tentativas, processa em grupos
+  do tamanho certo (conferido por concorrência real, não só contagem de
+  chamadas), e uma fatia falhando não trava as outras do mesmo lote.
+
+## Onde o navegador para de bastar (fase 06 em diante)
+
+Até a fase 05, o projeto inteiro roda 100% no navegador — nenhum servidor,
+nenhuma chave, `python3 -m http.server` basta. A fase 06 precisa mandar
+imagens pra um modelo de visão pago (Gemini), e isso quebra essa regra de
+um jeito que não dá pra evitar: colocar a chave paga direto no JavaScript
+do navegador a exporia a qualquer pessoa com o DevTools aberto.
+
+A solução adotada é o menor desvio possível dessa regra: uma única função
+serverless na Vercel (`api/leitura-semantica.js`), não um backend de
+verdade. Ela guarda a chave como variável de ambiente do servidor — nunca
+num arquivo do projeto, nunca no navegador — e é a única peça que sai do
+"100% client-side". Todo o resto (fases 00 a 05, o dossiê, a navegação)
+continua exatamente como estava.
+
+**Para rodar isso de verdade:**
+1. Publicar o projeto na Vercel (conectar o repositório, deploy automático
+   a cada push).
+2. Configurar `GEMINI_API_KEY` (e, se precisar, `GEMINI_MODEL`) no painel
+   do projeto — ver `.env.example` para o que cada uma faz. **O nome exato
+   do modelo de visão atual não foi confirmado**: o ambiente onde este
+   código foi escrito não tem acesso de rede a domínios do Google, então o
+   valor padrão embutido no código é um palpite razoável, não um fato
+   verificado. Confirme no Google AI Studio antes de configurar em
+   produção.
+3. Para testar a fase 06 localmente com a função de verdade, é preciso
+   `vercel dev` (que precisa da CLI da Vercel e login) em vez do
+   `python3 -m http.server` simples — as fases 00 a 05 continuam
+   funcionando com o servidor simples, só a 06 depende da função.
+
+Depois de configurada, roda sozinha: a chave nunca precisa ser digitada por
+ninguém a cada uso, não tem processo pra manter de pé (a Vercel escala a
+função sozinha a cada chamada).
 
 ## Decisões que valem para todo o projeto (não mudam)
 
@@ -177,7 +254,7 @@ chamar um modelo pago.
 
 ## Rodar
 
-Sem build, sem dependências de servidor. Para abrir a demonstração:
+Sem build. Para abrir a demonstração (fases 00 a 05, tudo sem custo):
 
 ```
 python3 -m http.server 8000
@@ -186,6 +263,11 @@ python3 -m http.server 8000
 
 (Precisa de servidor local, não `file://`, porque a página busca
 `fixtures/dossie-exemplo.json` via `fetch`.)
+
+A fase 06 (leitura semântica) é a exceção — depende da função em `api/`,
+que o `http.server` simples não serve. Ver "Onde o navegador para de
+bastar" abaixo para rodar essa fase específica (precisa de `vercel dev`
+ou de um deploy de verdade na Vercel).
 
 Para rodar os testes (Node 18+):
 
@@ -300,8 +382,43 @@ para dar sinal distinto — não fiz o trabalho extra de gerar um vídeo
 sintético com ação confinada a uma sub-região do frame só para essa
 combinação; os testes puros já provam a lógica.
 
+A leitura semântica (1.4.1 + 1.4.2 + 1.4.3) tem uma limitação de teste
+importante e deliberada: **o ambiente onde este código foi escrito não tem
+acesso de rede a domínios do Google**, então a chamada de verdade ao
+Gemini nunca foi executada. O que foi validado:
+
+- **A lógica pura** (`_leitura-semantica-core.js`): prompt e sanitização,
+  13 testes automatizados, incluindo os casos de F06-04 (verbo/objeto fora
+  da lista vira `indeterminado`, nunca erro nem dado inventado).
+- **A canalização do lado do navegador**, num Chromium real, encadeando o
+  pipeline inteiro (mapa de zonas → ingestão → extração → ciclos →
+  fatiamento → leitura semântica): a chamada `fetch("/api/leitura-semantica")`
+  foi interceptada com `page.route()` do Playwright e respondida com dados
+  simulados — sem precisar da Vercel nem do Gemini de verdade. Isso provou
+  que o payload é montado certo, que 5 fatias foram lidas em paralelo (lote
+  de até 4) em 92ms, que uma resposta `indeterminado` simulada aparece
+  destacada na tabela, e que gravar cria uma v2 de `microAcoes` com
+  `leituraSemantica` em cada fatia sem apagar a v1 da fase 05.
+- **O que não foi e não pôde ser testado aqui**: se `api/leitura-semantica.js`
+  realmente conversa certo com a API do Gemini (o formato exato da
+  requisição REST, o nome do modelo, o parsing da resposta). Isso só dá
+  para confirmar depois do deploy na Vercel com uma `GEMINI_API_KEY` de
+  verdade — trate a primeira chamada real como teste de integração
+  pendente, não como coisa já validada.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
+- **Validar `api/leitura-semantica.js` contra o Gemini de verdade**, depois
+  do deploy — ver a ressalva de teste acima. É o item de maior risco de
+  tudo que foi construído até aqui.
+- 1.1.3 — glossário completo da estação (nome oficial, código interno e
+  foto de referência por item). Hoje a fase 06 usa os nomes já cadastrados
+  no mapa de zonas como substituto — funciona, mas é mais pobre que o
+  glossário de verdade (sem foto, sem itens que não sejam zona).
+- 1.8.4 — biblioteca de estações (mapa de zonas, glossário, vocabulário de
+  verbos e quadro-mestre reusáveis entre vídeos). Sem isso, glossário e
+  verbos ficam como estão hoje: constante fixa ou substituto via zonas, em
+  vez de recurso próprio da estação.
 - 1.3.5 (parte pendente) — revisão visual dos cortes com correção
   arrastável (F04-06: "uma tira de miniaturas com as linhas de corte, e a
   pessoa arrasta se estiver errado"). A detecção automática existe; falta
@@ -311,11 +428,9 @@ combinação; os testes puros já provam a lógica.
   Adiado porque ainda não existe nenhuma fase de análise real reprocessando
   dado — a regra hoje não teria o que aplicar de verdade.
 - 1.2.5 — painel de registro e custo (frames processados, chamadas feitas,
-  gasto estimado). Ainda abstrato: só faz sentido quando a extração demorar
-  o suficiente (vídeo de vários minutos) para precisar de feedback de
-  progresso — hoje o vídeo de teste extrai em menos de 1 segundo.
-- 1.4.x — leitura semântica dos frames-chave (fase 06). É o primeiro
-  pacote que chama um modelo de visão de verdade (custo por chamada) — o
-  bloco "grátis" do pipeline (fases 00 a 05) está todo construído agora, e
-  é sobre as fatias que o 1.3.6 acabou de produzir que a leitura semântica
-  vai rodar.
+  gasto estimado). Com a fase 06 chamando um modelo pago de verdade agora,
+  este pacote deixou de ser abstrato — é o próximo com utilidade real
+  imediata.
+- 1.4.4 — alinhamento entre ciclos (fase 07, consenso): usa as leituras
+  semânticas que a fase 06 acabou de produzir em cada ciclo pra achar o que
+  se repete em 80% deles.

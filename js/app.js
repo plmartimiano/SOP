@@ -11,6 +11,7 @@ import { montarIngestao } from "./fase02-ui.js";
 import { montarExtracao } from "./fase03-ui.js";
 import { montarDeteccaoCiclos } from "./fase04-ui.js";
 import { montarFatiamento } from "./fase05-ui.js";
+import { montarLeituraSemantica } from "./fase06-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -21,6 +22,7 @@ const TITULO_FERRAMENTA = {
   "03": "Extrair frames",
   "04": "Detectar ciclos",
   "05": "Fatiar em micro-ações",
+  "06": "Ler frames-chave",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -129,7 +131,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -203,6 +205,23 @@ function renderPainel() {
         adicionarVersao(dossie, "microAcoes", dadosMicroAcoes, { origem: "F05-01/F05-02/F05-03/F05-04/F05-05" });
         renderTudo();
         mostrarStatus("Micro-ações gravadas no dossiê (seção \"microAcoes\").", "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "06") {
+    const mapaDeZonasAtual = dossie ? obterVersaoAtual(dossie, "mapaDeZonas") : null;
+    const microAcoesAtual = dossie ? obterVersaoAtual(dossie, "microAcoes") : null;
+    montarLeituraSemantica(document.getElementById("faseFerramenta"), {
+      microAcoesRodouNoDossie: microAcoesAtual !== null,
+      frames: obterFramesExtraidos(),
+      porCiclo: microAcoesAtual ? microAcoesAtual.dados.porCiclo : [],
+      zonas: mapaDeZonasAtual ? mapaDeZonasAtual.dados.zonas : [],
+      onGravar: (dadosMicroAcoes) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "microAcoes", dadosMicroAcoes, { origem: "F06-01/F06-02/F06-03/F06-04/F06-05" });
+        renderTudo();
+        mostrarStatus("Leitura semântica gravada no dossiê (nova versão de \"microAcoes\").", "ok");
       },
     });
   }
