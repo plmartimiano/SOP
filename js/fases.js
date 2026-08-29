@@ -138,6 +138,7 @@ export const FASES = [
     sai: "Fichas corrigidas e assinadas, com o original preservado ao lado da correção.",
     gate: "Uma pessoa identificada aprovou os seis passos. Nenhuma imagem é gerada antes deste aceite.",
     secaoDossie: "aprovacoes",
+    notaSecao: "O trecho de vídeo lado a lado só aparece de verdade quando o vídeo original ainda está na sessão do navegador (mesma limitação de sessao-midia.js das fases 02-06) — senão mostra os tempos do trecho, sem fingir. Só mãos, ferramenta, peças, critério de conclusão e risco são editáveis aqui; título e estado do produto ficam de fora de propósito (o segundo é acumulado entre todos os passos — editar um isoladamente quebraria a cadeia). \"Nenhuma imagem é gerada antes deste aceite\" hoje é garantido pela ausência das fases 12/13, não por uma checagem de código — quando elas existirem, precisam verificar esta seção antes de rodar.",
   },
   {
     numero: "12",

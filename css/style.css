@@ -158,6 +158,10 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 .ficha-campos dt:first-child{margin-top:0}
 .ficha-campos dd{margin:2px 0 0}
 .ficha-risco{color:var(--alert)}
+.ficha-campos input[type=text],.ficha-campos textarea{
+  width:100%;font:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);background:#fff;color:var(--ink);resize:vertical
+}
+.ficha-campos textarea.ficha-risco-input{border-color:var(--alert)}
 
 .mapa-instrucao{font-size:13.5px;color:var(--ink-soft);margin:10px 0 8px}
 #mapaCanvas{border:1px solid var(--line);background:#fff;cursor:crosshair;max-width:100%;display:block}

@@ -16,6 +16,7 @@ import { montarConsensoUI } from "./fase07-ui.js";
 import { montarReconhecimento } from "./fase08-ui.js";
 import { montarConsolidacao } from "./fase09-ui.js";
 import { montarFichas } from "./fase10-ui.js";
+import { montarValidacao } from "./fase11-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -31,6 +32,7 @@ const TITULO_FERRAMENTA = {
   "08": "Reconhecer a estação",
   "09": "Consolidar nos 6 passos",
   "10": "Gerar a ficha de cada passo",
+  "11": "Validar e aprovar",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -153,7 +155,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -310,6 +312,20 @@ function renderPainel() {
         adicionarVersao(dossie, "passos", dadosFichas, { origem: "1.6 (a ficha de cada passo)" });
         renderTudo();
         mostrarStatus(`${dadosFichas.passos.length} fichas geradas e gravadas no dossiê.`, "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "11") {
+    const passosAtual = dossie ? obterVersaoAtual(dossie, "passos") : null;
+    montarValidacao(document.getElementById("faseFerramenta"), {
+      fichas: passosAtual ? passosAtual.dados.passos : null,
+      video: obterVideoAprovado(),
+      onGravar: (dadosAprovacao) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "aprovacoes", dadosAprovacao, { origem: "fase 11 (mesa de validação humana)" });
+        renderTudo();
+        mostrarStatus(`Aprovação assinada por ${dadosAprovacao.aprovacao.responsavel} (${dadosAprovacao.aprovacao.totalCorrecoes} correção${dadosAprovacao.aprovacao.totalCorrecoes === 1 ? "" : "ões"}).`, "ok");
       },
     });
   }

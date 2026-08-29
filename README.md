@@ -19,14 +19,17 @@ arrastável), **1.3.6** (fatiamento em micro-ações), **1.4.1 + 1.4.2 +
 ver ressalva sobre a estabilidade de ordem), **1.5.1 + 1.5.2 + 1.5.3**
 (reconhecimento da estação — inventário, relatório e alternativas de
 agrupamento, com homologação humana), **1.5.4** (motor de consolidação —
-aplica de verdade, sem perguntar de novo, a regra que a fase 08 homologou)
-e **1.6** (a ficha de cada passo — mãos, ferramenta, peças, critério de
-conclusão, risco e estado do produto) da EAP. Com isso, o bloco C do
-organograma (a parte "grátis" do pipeline) está completo, a primeira
-chamada paga do projeto (bloco D, fase 06) já existe — com uma ressalva de
-arquitetura importante, ver "Onde o navegador para de bastar" — o bloco D
-inteiro (fases 06 e 07) está fechado, e o bloco E (fases 08, 09 e 10 —
-reconhecimento, consolidação e ficha) também.
+aplica de verdade, sem perguntar de novo, a regra que a fase 08 homologou),
+**1.6** (a ficha de cada passo — mãos, ferramenta, peças, critério de
+conclusão, risco e estado do produto) e a **fase 11** (mesa de validação
+humana — a barreira fixada desde o início do projeto: nenhuma imagem antes
+do aceite humano) da EAP. Com isso, o bloco C do organograma (a parte
+"grátis" do pipeline) está completo, a primeira chamada paga do projeto
+(bloco D, fase 06) já existe — com uma ressalva de arquitetura importante,
+ver "Onde o navegador para de bastar" — o bloco D inteiro (fases 06 e 07)
+está fechado, o bloco E (fases 08, 09 e 10 — reconhecimento, consolidação
+e ficha) também, e a última barreira humana antes de qualquer geração de
+imagem (fase 11) está implementada e testada.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -384,6 +387,51 @@ reconhecimento, consolidação e ficha) também.
   nenhuma ação, e `verificarCamposObrigatorios` não acusa nada numa ficha
   bem formada mas acusa `trechoVideo` ausente quando a origem não resolve
   nenhuma fatia.
+- `js/validacao.js` — fase 11 (mesa de validação humana, "a barreira que
+  não se automatiza"): compara os valores finais que a pessoa deixou em
+  cada campo editável (`maos`, `ferramentas`, `pecas`, `criterioConclusao`,
+  `risco`) contra o que a fase 10 tinha derivado, e guarda só o que de
+  fato mudou — o valor original nunca é sobrescrito, fica acessível em
+  `correcoes[campo].original` ao lado do `corrigido`. `titulo` e o estado
+  do produto ficam de fora das correções de propósito: o segundo é
+  acumulado entre TODOS os 6 passos, então corrigir um isoladamente
+  quebraria a consistência da cadeia — se algo estiver errado ali, o
+  ajuste correto é voltar pra fase 09/10, não remendar na validação.
+  `montarAprovacao` junta original + correções + valor final de cada
+  ficha com os dados de quem assinou (nome, cargo, data/hora, total de
+  correções feitas) — aprovar sem nenhuma correção também é um resultado
+  válido (`totalCorrecoes: 0`), não um erro.
+- `js/fase11-ui.js` — tela da fase 11: um cartão editável por passo, com
+  os 5 campos acima como formulário (mãos/ferramenta/peças como texto
+  separado por vírgula; critério de conclusão e risco como texto livre —
+  risco com borda na cor de alerta do projeto, `--alert`, pra chamar
+  atenção visualmente de que aquele campo em particular nunca foi avaliado
+  de verdade antes daqui) e o **trecho de vídeo lado a lado**: quando o
+  vídeo original ainda está na sessão do navegador (`sessao-midia.js`,
+  mesma limitação de sessão das fases 02-06 — reprocessar o dossiê ou
+  recarregar a página perde o vídeo, mas nunca o dado gravado), mostra um
+  `<video>` de verdade recortado no trecho daquele passo: no
+  `loadedmetadata` faz o seek pro início do trecho, e um `timeupdate`
+  pausa e trava o vídeo no fim do trecho, pra pessoa nunca vazar pro
+  próximo passo sem perceber. Sem vídeo na sessão, mostra só os tempos do
+  trecho em texto, nunca fingindo que o vídeo está ali. Só grava depois
+  de nome + cargo preenchidos (mesma exigência de identificação da fase
+  08 — "SOP é documento de segurança"). **Esta é a barreira fixada desde
+  o início do projeto** ("nenhuma imagem é gerada antes do aceite humano
+  das fichas dos 6 passos") — hoje o bloqueio é a própria ausência das
+  fases 12/13 (geração de imagem ainda não existe no programa), não uma
+  checagem de código; quando essas fases forem construídas, é ali que
+  precisam verificar se existe uma versão gravada em `aprovacoes` antes
+  de rodar.
+- `tests/validacao.test.mjs` — 9 testes: nenhuma correção registrada
+  quando nada muda, só o campo que de fato mudou é registrado, comparação
+  de lista por conteúdo (não por identidade do array — trocar `["direita"]`
+  por um array novo com o mesmo conteúdo não conta como correção),
+  detecção de mudança dentro de uma lista, `titulo`/`estadoProduto`
+  ficam fora das correções mesmo se "mudarem", o original nunca some
+  depois de aplicar uma correção, validação de assinatura (nome/cargo
+  obrigatórios, espaço em branco conta como vazio), e `montarAprovacao`
+  monta certo tanto com correções quanto com zero correções.
 
 ## Onde o navegador para de bastar (fase 06 em diante)
 
@@ -722,6 +770,46 @@ anterior — e a fase 09, visitada depois, continuou funcionando normalmente
 risco por esse motivo, mas confirmei mesmo assim). Nenhum erro de página
 em nenhum passo.
 
+A mesa de validação humana (fase 11) foi validada em três frentes, porque
+é a barreira mais importante do projeto do ponto de vista de segurança.
+Primeiro, `tests/validacao.test.mjs` — 9 testes sobre a lógica pura de
+comparação/correção (ver lista de módulos acima).
+
+Segundo, um encadeamento completo 07 → 08 → 09 → 10 → 11 num Chromium
+real, com o mesmo fixture das fases anteriores (sem vídeo na sessão, de
+propósito — o caso mais comum na prática, já que ele depende de a mesma
+aba nunca ter recarregado): fase 11 sem os passos consolidados pediu pra
+rodar a fase 09; com os passos mas sem as fichas (fase 10 não rodou)
+avisou exatamente isso, em vez de tentar montar um formulário quebrado
+com campos que não existem; depois de rodar a fase 10, mostrou os 6
+cartões editáveis, cada um com a legenda correta de "vídeo não disponível
+nesta sessão" e os tempos do trecho. Testei a leitura do campo `risco` do
+passo 1 (confirmando que vem pré-preenchido com o texto fixo "não
+avaliado" da fase 10), corrigi só esse campo, deixei os outros 5 passos
+intocados, tentei assinar sem nome/cargo (erro certo), assinei de
+verdade, e conferi o dossiê gravado: `aprovacao.totalCorrecoes` = 1, a
+ficha 1 tinha `original.risco` (o texto fixo, preservado) e
+`final.risco` (o texto corrigido) ao mesmo tempo, e a ficha 2 tinha
+`correcoes: {}` com `final.risco` idêntico ao texto padrão — provando que
+"aceitar como está" e "corrigir" convivem corretamente na mesma
+aprovação.
+
+Terceiro, um teste focado só no recorte de vídeo lado a lado — a parte
+que o encadeamento acima não podia cobrir, porque importar um dossiê por
+JSON nunca populou o vídeo em memória. Montei um fixture menor com
+`passos` já no formato da fase 10 (pulando o clique em 07-10) com dois
+trechos de vídeo curtos (0,5s–1,5s e 2s–3s), subi um vídeo sintético de
+4s pela fase 02 de verdade (para popular `sessao-midia.js`, sem precisar
+gravar `origemVideo` no dossiê em si) e fui pra fase 11: os dois cartões
+mostraram um `<video>` de verdade com `src` do tipo `blob:`; o vídeo do
+passo 1 fez o seek certo pro início do trecho assim que carregou os
+metadados (`currentTime` = 0,5s, confirmado depois do evento
+`loadedmetadata`); e, dando play a partir de 1,4s e esperando a
+reprodução avançar, o vídeo parou sozinho exatamente em `currentTime` =
+1,5s (o fim do trecho) com `paused: true` — confirmando que o clamp do
+`timeupdate` funciona de verdade, não só na leitura do código. Nenhum
+erro de página em nenhum dos três testes.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - **Validar `api/leitura-semantica.js` contra o Gemini de verdade.** Ainda
@@ -747,14 +835,13 @@ em nenhum passo.
   estação" para aplicar o padrão. Hoje a homologação da fase 08 (e a
   consolidação da fase 09 que a aplica) valem só para o dossiê atual.
 - "4 dos 6 passos coincidem com o SOP feito à mão" (o terceiro critério de
-  saída da fase 09, junto com F08-09/F08-10 acima) e o campo **risco** da
-  ficha de cada passo (fase 10) — não são verificáveis/preenchíveis com o
-  que o programa guarda hoje: os dois exigiriam o SOP manual da estação ou
-  uma fonte de avaliação de risco digitalizada em algum lugar do dossiê ou
-  da biblioteca de estações (1.8.4), e isso não existe em nenhum pacote da
-  EAP até aqui. O campo `risco` da fase 10 já existe e é gravado — só que
-  como texto fixo de "não avaliado", explicitamente para a fase 11 (mesa
-  de validação humana) preencher de verdade, nunca inventado no lugar dela.
+  saída da fase 09, junto com F08-09/F08-10 acima) — não é verificável com
+  o que o programa guarda hoje: exigiria o SOP manual da estação
+  digitalizado em algum lugar do dossiê ou da biblioteca de estações
+  (1.8.4), e isso não existe em nenhum pacote da EAP até aqui. (O campo
+  `risco`, que tinha a mesma limitação, já não está mais nesta lista — a
+  fase 11 agora permite preenchê-lo de verdade, com o valor original da
+  fase 10 preservado ao lado da correção.)
 - 1.8.4 — biblioteca de estações (mapa de zonas, glossário, vocabulário de
   verbos, quadro-mestre e agora também a regra de agrupamento homologada,
   reusáveis entre vídeos). Sem isso, glossário e verbos ficam como estão
@@ -773,11 +860,16 @@ em nenhum passo.
   gasto estimado). Com a fase 06 chamando um modelo pago de verdade agora,
   este pacote deixou de ser abstrato — é o próximo com utilidade real
   imediata.
-- fase 11 (mesa de validação humana) é o próximo passo natural do
-  pipeline, e o mais importante do ponto de vista de segurança do
-  programa: é o portão que decide se qualquer imagem chega a ser gerada.
-  Mostra as fichas da fase 10 lado a lado com o trecho de vídeo de cada
-  uma, deixa corrigir (preenchendo de verdade o campo `risco`, entre
-  outros) preservando o original ao lado da correção, e exige uma pessoa
-  identificada assinando as seis fichas antes de qualquer coisa seguir
-  para a fase 12 (prompts de ilustração).
+- A aplicação de verdade da barreira "nenhuma imagem antes do aceite
+  humano" — hoje ela existe só porque as fases 12 e 13 (prompts e geração
+  de imagem) ainda não foram construídas, não porque algum código verifica
+  a seção `aprovacoes`. Quando essas fases forem implementadas, a
+  primeira coisa que precisam fazer é recusar rodar sem uma versão
+  gravada ali — documentado como requisito, não implementado ainda,
+  porque não existe o que bloquear.
+- fase 12 (prompts de ilustração) é o próximo passo natural do pipeline:
+  entra com as fichas aprovadas da fase 11 (o valor `final` de cada uma,
+  já com as correções aplicadas) + a bíblia visual e o mapa de zonas da
+  fase 00, e monta os seis prompts em camadas que a fase 13 vai usar para
+  gerar as imagens — a primeira fase depois da barreira humana, e a
+  última antes da segunda chamada paga do projeto.
