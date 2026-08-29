@@ -15,6 +15,7 @@ import { montarLeituraSemantica } from "./fase06-ui.js";
 import { montarConsensoUI } from "./fase07-ui.js";
 import { montarReconhecimento } from "./fase08-ui.js";
 import { montarConsolidacao } from "./fase09-ui.js";
+import { montarFichas } from "./fase10-ui.js";
 import { definirVideoAprovado, obterVideoAprovado, obterFramesExtraidos, limparSessaoMidia } from "./sessao-midia.js";
 
 let dossie = null;
@@ -29,6 +30,7 @@ const TITULO_FERRAMENTA = {
   "07": "Calcular consenso",
   "08": "Reconhecer a estação",
   "09": "Consolidar nos 6 passos",
+  "10": "Gerar a ficha de cada passo",
 };
 
 const sidebarEl = document.getElementById("sidebar");
@@ -151,7 +153,7 @@ function renderPainel() {
         </div>
         <div class="gatebar"><span>Passa se</span>${fase.gate}</div>
         ${fase.notaSecao ? `<div class="notasecao">${fase.notaSecao}</div>` : ""}
-        ${["00", "02", "03", "04", "05", "06", "07", "08", "09"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
+        ${["00", "02", "03", "04", "05", "06", "07", "08", "09", "10"].includes(fase.numero) ? `<div class="ferramenta"><h3>${TITULO_FERRAMENTA[fase.numero]}</h3><div id="faseFerramenta"></div></div>` : ""}
         <div class="estado">
           <h3>Estado no dossiê</h3>
           ${renderEstadoDaFase(fase)}
@@ -292,6 +294,22 @@ function renderPainel() {
         adicionarVersao(dossie, "passos", dadosConsolidacao, { origem: "1.5.4 (motor de consolidação, aplica F09-02 já homologado)" });
         renderTudo();
         mostrarStatus(`Consolidado em ${dadosConsolidacao.passos.length} passos e gravado no dossiê.`, "ok");
+      },
+    });
+  }
+
+  if (fase.numero === "10") {
+    const passosAtual = dossie ? obterVersaoAtual(dossie, "passos") : null;
+    const consensoFase07 = obterVersaoComCampo("reconhecimento", "nucleo");
+    montarFichas(document.getElementById("faseFerramenta"), {
+      passos: passosAtual ? passosAtual.dados.passos : null,
+      nucleo: consensoFase07 ? consensoFase07.dados.nucleo : null,
+      cicloExemplarIndice: consensoFase07 ? consensoFase07.dados.cicloExemplarIndice : null,
+      onGravar: (dadosFichas) => {
+        if (!dossie) return;
+        adicionarVersao(dossie, "passos", dadosFichas, { origem: "1.6 (a ficha de cada passo)" });
+        renderTudo();
+        mostrarStatus(`${dadosFichas.passos.length} fichas geradas e gravadas no dossiê.`, "ok");
       },
     });
   }

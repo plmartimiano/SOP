@@ -18,13 +18,15 @@ arrastável), **1.3.6** (fatiamento em micro-ações), **1.4.1 + 1.4.2 +
 1.4.3** (leitura semântica), **1.4.4 + 1.4.5** (consenso entre ciclos —
 ver ressalva sobre a estabilidade de ordem), **1.5.1 + 1.5.2 + 1.5.3**
 (reconhecimento da estação — inventário, relatório e alternativas de
-agrupamento, com homologação humana) e **1.5.4** (motor de consolidação —
+agrupamento, com homologação humana), **1.5.4** (motor de consolidação —
 aplica de verdade, sem perguntar de novo, a regra que a fase 08 homologou)
-da EAP. Com isso, o bloco C do organograma (a parte "grátis" do pipeline)
-está completo, a primeira chamada paga do projeto (bloco D, fase 06) já
-existe — com uma ressalva de arquitetura importante, ver "Onde o navegador
-para de bastar" — o bloco D inteiro (fases 06 e 07) está fechado, e o
-bloco E (fases 08 e 09 — reconhecimento e consolidação) também.
+e **1.6** (a ficha de cada passo — mãos, ferramenta, peças, critério de
+conclusão, risco e estado do produto) da EAP. Com isso, o bloco C do
+organograma (a parte "grátis" do pipeline) está completo, a primeira
+chamada paga do projeto (bloco D, fase 06) já existe — com uma ressalva de
+arquitetura importante, ver "Onde o navegador para de bastar" — o bloco D
+inteiro (fases 06 e 07) está fechado, e o bloco E (fases 08, 09 e 10 —
+reconhecimento, consolidação e ficha) também.
 
 - `js/dossie.js` — esquema do dossiê: as dez seções (`origemVideo`,
   `mapaDeZonas`, `frames`, `ciclos`, `microAcoes`, `reconhecimento`,
@@ -337,6 +339,51 @@ bloco E (fases 08 e 09 — reconhecimento e consolidação) também.
   núcleo, um `criterioEscolhido` desconhecido (dossiê de outra versão do
   programa) devolve erro legível em vez de travar, e menos de 6 ações
   disponíveis não força um resultado forjado.
+- `js/fichas.js` — pacote 1.6 (fase 10, "a ficha de cada passo"): cruza os
+  6 passos da fase 09 com o núcleo da fase 07 (usando o `origem` de cada
+  passo — a lista de rótulos das ações originais que foram fundidas nele
+  — pra reencontrar a leitura semântica de cada uma) e deriva a ficha. Os
+  campos têm confiança bem diferente entre si, e isso é declarado no
+  código, não escondido: **mãos, ferramenta, peças e trecho de vídeo** são
+  dado real, agregado da leitura semântica já registrada (mãos e
+  ferramentas distintas de todas as ações fundidas num passo; peças só das
+  causas `componente_novo`/`combinada`; trecho de vídeo é o mínimo/máximo
+  dos tempos de início/fim das fatias resolvidas, dentro do ciclo exemplar
+  que a fase 07 já escolheu, com um aviso quando uma ação não tinha dado
+  nesse ciclo específico e precisou usar outro disponível). **Critério de
+  conclusão** é uma frase derivada, não uma leitura de verdade: menciona
+  conferência visual se o passo contém uma verificação, ou cita a última
+  ação do passo caso contrário. **Risco não tem nenhuma fonte de dado em
+  todo o pipeline** — em vez de inventar uma avaliação, o campo é um texto
+  fixo declarando que não foi avaliado automaticamente e precisa de
+  revisão na fase 11. **Estado do produto antes/depois** é a lista
+  acumulada de peças instaladas até aquele ponto (soma progressiva ao
+  longo dos passos) — uma aproximação por componentes agregados, não uma
+  descrição visual do produto. A função ignora qualquer campo extra que já
+  exista nos passos de entrada (só lê `numero`/`titulo`/
+  `duracaoMediaSegundos`/`duvidosa`/`origem`), o que a torna idempotente:
+  rodar a fase 10 sobre sua própria saída anterior dá o mesmo resultado.
+- `js/fase10-ui.js` — tela da fase 10: sem escolha nem assinatura (tipo
+  "padrao", igual à fase 09) — exige os passos consolidados (fase 09) e o
+  núcleo (fase 07), gera as fichas, mostra um cartão por passo com todos
+  os campos (a fusão duvidosa mantém a etiqueta amarela; o risco aparece
+  na cor de alerta do projeto, `--alert`, pra chamar atenção visualmente
+  de que precisa de revisão humana), e grava. **Grava sob a mesma chave
+  `passos` que a fase 09 usa** — a ficha é um superconjunto compatível dos
+  mesmos 6 passos, não uma seção paralela com formato diferente (ao
+  contrário de "reconhecimento" nas fases 07/08), então não precisou de
+  `campoDistintivo`: qualquer leitor de `passos.dados.passos` sempre acha
+  a lista, seja a versão da fase 09 ou a da fase 10.
+- `tests/fichas.test.mjs` — 10 testes: agrega mãos e ferramenta de todas
+  as ações fundidas num passo, o trecho de vídeo cobre do início da
+  primeira ação ao fim da última, o critério de conclusão muda certo com
+  e sem verificação, o risco nunca varia do texto de "não avaliado"
+  (nunca inventado), o estado do produto acumula peças na ordem certa sem
+  repetir e não muda num passo sem peça nova, o fallback pro ciclo
+  alternativo funciona quando o ciclo exemplar pedido não existe pra
+  nenhuma ação, e `verificarCamposObrigatorios` não acusa nada numa ficha
+  bem formada mas acusa `trechoVideo` ausente quando a origem não resolve
+  nenhuma fatia.
 
 ## Onde o navegador para de bastar (fase 06 em diante)
 
@@ -642,6 +689,39 @@ de teste (não do aplicativo) — registrado aqui em vez de simplesmente
 apagado, porque relatar só o resultado final sem essa checagem teria
 escondido uma dúvida real que existiu.
 
+A ficha de cada passo (1.6) também foi validada de duas formas. Primeiro,
+`tests/fichas.test.mjs` — 10 testes sobre o mesmo núcleo de 8 ações usado
+nos pacotes anteriores, com mãos e ferramentas diferenciadas de propósito
+pra exercitar a agregação: mãos e ferramenta batem certo quando um passo
+funde várias ações originais, o trecho de vídeo cobre do início ao fim
+certos, o critério de conclusão muda com e sem verificação, o risco nunca
+varia (sempre o texto de "não avaliado" — provando que não há caminho de
+código que invente uma avaliação), o estado do produto acumula peças sem
+repetir e sem mudar num passo sem peça nova, o fallback pro ciclo
+alternativo funciona, e a idempotência (rodar sobre a própria saída
+anterior) foi confirmada tanto no teste automatizado quanto no navegador
+a seguir.
+
+Segundo, um encadeamento completo num Chromium real, dessa vez cobrindo a
+cadeia inteira 07 → 08 → 09 → 10 com o mesmo fixture das fases anteriores:
+sem os passos consolidados, a fase 10 pediu pra rodar a fase 09 primeiro;
+depois de rodar 07 (consenso), 08 (homologação) e 09 (consolidação) em
+sequência, a fase 10 gerou as 6 fichas certas — mãos e ferramenta
+agregadas corretamente no passo fundido (a mesma fusão duvidosa da fase
+09, com a etiqueta preservada), critério de conclusão certo em cada um
+(conferência visual só no passo que tem a verificação), risco idêntico
+nos 6 (o texto fixo), estado do produto acumulando as 4 peças na ordem
+certa, e o trecho de vídeo de cada passo batendo com os tempos do
+fixture. Gravar acendeu o ponto verde da fase 10. Por fim, testei a
+idempotência de propósito: saí e voltei pra fase 10 (agora com `passos`
+já na versão enriquecida da própria fase 10) e rodei de novo — gerou
+exatamente as mesmas 6 fichas, sem erro, confirmando que a função ignora
+com segurança os campos extras que ela mesma tinha adicionado da vez
+anterior — e a fase 09, visitada depois, continuou funcionando normalmente
+(ela nunca leu a seção `passos`, só grava nela, então nunca esteve em
+risco por esse motivo, mas confirmei mesmo assim). Nenhum erro de página
+em nenhum passo.
+
 ## Próximos pacotes da EAP (não implementados ainda)
 
 - **Validar `api/leitura-semantica.js` contra o Gemini de verdade.** Ainda
@@ -667,14 +747,14 @@ escondido uma dúvida real que existiu.
   estação" para aplicar o padrão. Hoje a homologação da fase 08 (e a
   consolidação da fase 09 que a aplica) valem só para o dossiê atual.
 - "4 dos 6 passos coincidem com o SOP feito à mão" (o terceiro critério de
-  saída da fase 09, junto com F08-09/F08-10 acima) — não é verificável com
-  o que o programa guarda hoje: exigiria o SOP manual da estação
-  digitalizado em algum lugar do dossiê ou da biblioteca de estações
-  (1.8.4), e isso não existe em nenhum pacote da EAP até aqui.
-- 1.1.3 — glossário completo da estação (nome oficial, código interno e
-  foto de referência por item). Hoje a fase 06 usa os nomes já cadastrados
-  no mapa de zonas como substituto — funciona, mas é mais pobre que o
-  glossário de verdade (sem foto, sem itens que não sejam zona).
+  saída da fase 09, junto com F08-09/F08-10 acima) e o campo **risco** da
+  ficha de cada passo (fase 10) — não são verificáveis/preenchíveis com o
+  que o programa guarda hoje: os dois exigiriam o SOP manual da estação ou
+  uma fonte de avaliação de risco digitalizada em algum lugar do dossiê ou
+  da biblioteca de estações (1.8.4), e isso não existe em nenhum pacote da
+  EAP até aqui. O campo `risco` da fase 10 já existe e é gravado — só que
+  como texto fixo de "não avaliado", explicitamente para a fase 11 (mesa
+  de validação humana) preencher de verdade, nunca inventado no lugar dela.
 - 1.8.4 — biblioteca de estações (mapa de zonas, glossário, vocabulário de
   verbos, quadro-mestre e agora também a regra de agrupamento homologada,
   reusáveis entre vídeos). Sem isso, glossário e verbos ficam como estão
@@ -693,9 +773,11 @@ escondido uma dúvida real que existiu.
   gasto estimado). Com a fase 06 chamando um modelo pago de verdade agora,
   este pacote deixou de ser abstrato — é o próximo com utilidade real
   imediata.
-- fase 10 (a ficha de cada passo) é o próximo passo natural do pipeline:
-  detalha os mesmos 6 passos que a fase 09 acabou de consolidar — mãos,
-  ferramenta, peças, critério de conclusão, risco, estado do produto antes
-  e depois — na mesma seção `passos` do dossiê. É a última fase antes da
-  mesa de validação humana (fase 11), que é o portão que decide se alguma
-  imagem chega a ser gerada.
+- fase 11 (mesa de validação humana) é o próximo passo natural do
+  pipeline, e o mais importante do ponto de vista de segurança do
+  programa: é o portão que decide se qualquer imagem chega a ser gerada.
+  Mostra as fichas da fase 10 lado a lado com o trecho de vídeo de cada
+  uma, deixa corrigir (preenchendo de verdade o campo `risco`, entre
+  outros) preservando o original ao lado da correção, e exige uma pessoa
+  identificada assinando as seis fichas antes de qualquer coisa seguir
+  para a fase 12 (prompts de ilustração).

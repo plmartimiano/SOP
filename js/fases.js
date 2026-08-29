@@ -127,7 +127,7 @@ export const FASES = [
     sai: "Seis fichas completas: mãos, ferramenta, peças, critério de conclusão, risco, estado do produto antes e depois.",
     gate: "Nenhum campo obrigatório está vazio e cada ficha volta ao seu trecho de vídeo.",
     secaoDossie: "passos",
-    notaSecao: "A ficha detalha os mesmos 6 passos da fase 09, na mesma seção — os campos extras (mãos, risco, estado do produto) entram quando o pacote 1.6 for implementado.",
+    notaSecao: "A ficha detalha os mesmos 6 passos da fase 09, gravando uma nova versão da mesma seção — mãos, ferramenta, peças e trecho de vídeo vêm da leitura semântica já registrada; critério de conclusão é derivado (presença ou não de verificação no passo); risco não tem nenhuma fonte de dado no pipeline até aqui e fica marcado \"não avaliado\" para a fase 11 preencher, nunca inventado; estado do produto é a lista acumulada de peças instaladas, não uma descrição visual.",
   },
   {
     numero: "11",

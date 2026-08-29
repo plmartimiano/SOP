@@ -150,6 +150,14 @@ pre.jsontext{margin:0;padding:12px;border-top:1px solid var(--line);font-size:12
 .alternativa-passos li{margin-bottom:5px}
 .passo-duvidoso{background:rgba(232,176,4,.16);border-left:3px solid var(--hazard);padding:2px 6px 2px 8px;margin-left:-9px}
 .tag-duvidosa{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);background:var(--hazard);padding:1px 5px;margin-left:6px;border-radius:2px}
+.fichas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:14px}
+.ficha-card{border:1px solid var(--line);background:#fff;padding:12px}
+.ficha-card h4{margin:0 0 8px;font-size:14px}
+.ficha-campos{margin:0;font-size:12.5px}
+.ficha-campos dt{font-weight:700;color:var(--ink-soft);margin-top:8px}
+.ficha-campos dt:first-child{margin-top:0}
+.ficha-campos dd{margin:2px 0 0}
+.ficha-risco{color:var(--alert)}
 
 .mapa-instrucao{font-size:13.5px;color:var(--ink-soft);margin:10px 0 8px}
 #mapaCanvas{border:1px solid var(--line);background:#fff;cursor:crosshair;max-width:100%;display:block}
